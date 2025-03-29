@@ -20,7 +20,7 @@ import unets
 unsqueeze3x = lambda x: x[..., None, None, None]
 
 
-class GuassianDiffusion:
+class GaussianDiffusion:
     """Gaussian diffusion process with 1) Cosine schedule for beta values (https://arxiv.org/abs/2102.09672)
     2) L_simple training objective from https://arxiv.org/abs/2006.11239.
     """
@@ -372,7 +372,7 @@ def main():
         print(
             "We are assuming that model input/ouput pixel range is [-1, 1]. Please adhere to it."
         )
-    diffusion = GuassianDiffusion(args.diffusion_steps, args.device)
+    diffusion = GaussianDiffusion(args.diffusion_steps, args.device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
 
     # load pre-trained model
