@@ -1,4 +1,6 @@
 import numpy as np
+from scipy.special import logsumexp, log_softmax
+
 import time
 
 import src
@@ -27,59 +29,38 @@ def generate_samples(rng, x, width=8, layers=3):
 
 # algorithm
 algorithm_prompt = """
-Write a function that takes in training data points of shape (num_pts, dims), as well as test data (num_test, dims), and spits out a scalar which is the estimated log likelihood of the test data.
+Write a function that takes in training data points of shape (num_pts, D) and spits out a D-dimensional Gaussian mixture model through parameters: component weight logits of shape (num_comps,), component means (num_comps, D) and component covariances (num_comps, D, D). 
 You are implementing kernel density estimation using some form of bandwidth selection heuristic for your base kernel of choice.
-Use only NumPy and SciPy and implement the rest from scratch.
+Use only NumPy and implement the rest from scratch.
 """
 
 
 first_algorithm = """
 import numpy as np
-from scipy.special import logsumexp
 
 
-def algorithm_func(train_xs, test_xs):
+def algorithm_func(train_xs):
     \"\"\"
     This algorithm implements Gaussian kernel density estimation using Silverman
 
-    :param np.ndarray train_xs: training data points (num_train, dims)
-    :param np.ndarray test_xs: test data points (num_test, dims)
+    :param np.ndarray train_xs: training data points (num_pts, D)
+    :return:
+        weight_logits (num_comps,)
+        mus (num_comps, D)
+        covs (num_comps, D, D)
     \"\"\"
-    _log_twopi = np.log(2 * np.pi)
-
-    def log_prob_Gaussian(ys, mus, sigmas):
-        \"\"\"
-        :param np.ndarray mus: concentration parameters (..., D)
-        :param np.ndarray sigmas: concentration parameters (..., D)
-        :return:
-            log density (...)
-        \"\"\"
-        ll = -_log_twopi * 2 * np.log(sigmas + 1e-12) - .5 * (ys - mus) ** 2 / (sigmas**2 + 1e-10)
-        return ll.sum(-1)
-
-    def log_prob_Gaussian_mixture(x_eval, ws, mus, sigmas):
-        \"\"\"
-        :param np.ndarray x_eval: evaluation locations (..., num_pts, D)
-        :param np.ndarray ws: weights (num_pts, num_comps)
-        :param np.ndarray mus: weights (num_pts, num_comps, D)
-        :param np.ndarray sigmas: weights (num_pts, num_comps, D)
-        :return:
-            log density (..., num_pts)
-        \"\"\"
-        log_ws = np.log(ws)
-        ll = log_prob_Gaussian(x_eval[..., None, :], mus, sigmas)  # (..., num_pts, num_comps)
-        return logsumexp(log_ws + ll, axis=-1)
-    
-    # Silverman's rule
-    num_train, dims = train_xs.shape
+    num_pts, dims = train_xs.shape
     std_devs = train_xs.std(0, keepdims=True)
-    silverman_bws = 0.9 * std_devs * num_train ** (-1 / 5)
+    silverman_bws = 1.06 * std_devs * num_pts ** (-1 / 5)  # Silverman's rule
 
-    ws = np.ones((1, num_train))
-    mus = train_xs[None, ...]
-    sigmas = silverman_bws[None, ...]
-    return log_prob_Gaussian_mixture(test_xs[:, None, :], ws, mus, sigmas)[:, 0]
-    """
+    num_comps = num_pts  # place one Gaussian at every point
+    weight_logits = np.zeros(num_comps)  # uniform weighting
+    mus = train_xs
+    sigmas = np.broadcast_to(silverman_bws, (num_comps, dims))
+    covs = np.einsum('...i,jk->...jk', sigmas ** 2, np.eye(dims))
+
+    return weight_logits, mus, covs
+"""
 
 
 
@@ -93,13 +74,52 @@ You can come up with your own internal objective function (e.g. average test lik
 """
 
 
-def EvaluateAlgorithm(instances_seed, algo_script_file: str):
+_log_twopi = np.log(2 * np.pi)
+
+
+def log_prob_multivariate_Gaussian(xs, mus, covs):
+    """
+    :param np.ndarray xs: evaluation points (..., D)
+    :param np.ndarray mus: means (..., D)
+    :param np.ndarray covs: covariance matrices (..., D, D)
+    :return:
+        log probabilities (...)
+    """
+    D = xs.shape[-1]
+    delta = xs - mus  # (..., D)
+    chol = np.linalg.cholesky(covs)  # (..., D, D)
+    # Solve instead of inverse for numerical stability
+    delta_sol = np.linalg.solve(chol, delta[..., None])  # (..., D, 1)
+    mahal = np.sum(delta_sol.squeeze(-1) ** 2, axis=-1)  # (...)
+    log_det = 2.0 * np.sum(np.log(np.diagonal(chol, axis1=-2, axis2=-1)), axis=-1)
+    return -0.5 * (D * _log_twopi + log_det + mahal)
+
+
+def log_prob_multivariate_Gaussian_mixture(xs, ws_logits, mus, covs):
+    """
+    :param np.ndarray xs: evaluation points (..., num_pts, D)
+    :param np.ndarray ws: mixture weights (..., num_pts, num_comps)
+    :param np.ndarray mus: means (..., num_pts, num_comps, D)
+    :param np.ndarray covs: covariances (..., num_pts, num_comps, D, D)
+    :return:
+        log probabilities (..., num_pts)
+    """
+    log_ws = log_softmax(ws_logits, axis=-1)  # (..., num_pts, num_comps)
+    xs_exp = xs[..., :, None, :]  # (..., num_pts, 1, D)
+    log_probs = log_prob_multivariate_Gaussian(xs_exp, mus, covs)  # (..., num_pts, num_comps)
+    return logsumexp(log_ws + log_probs, axis=-1)  # (..., num_pts)
+
+
+
+def EvaluateAlgorithm(instances_seed, challenge_params, algo_script_file: str):
     """
     Generate problem instances and applies it to the algorithm
 
     :return:
         evaluation performance results that is added to feedback prompt
     """
+    dims = challenge_params['dims']
+
     with open(algo_script_file, 'r') as f:
         algo_code_len = len(f.read())
 
@@ -115,18 +135,21 @@ def EvaluateAlgorithm(instances_seed, algo_script_file: str):
 
         rng_samps = np.random.default_rng(seed + 1)
 
-        num_samples = 2 ** 8
-        z = rng_samps.normal(size=(num_samples, 2))
+        num_samples = challenge_params['num_train_pts']
+        z = rng_samps.normal(size=(num_samples, dims))
         rng_params = np.random.default_rng(seed)
         train_xs = generate_samples(rng_params, z)
 
-        num_samples = 2 ** 5
-        z = rng_samps.normal(size=(num_samples, 2))
+        num_samples = challenge_params['num_test_pts']
+        z = rng_samps.normal(size=(num_samples, dims))
         rng_params = np.random.default_rng(seed)
         test_xs = generate_samples(rng_params, z)
 
-        test_ll_xs = algorithm_func(train_xs, test_xs)
-        train_ll_xs = algorithm_func(train_xs, train_xs)
+        weight_logits, mus, covs = algorithm_func(train_xs)
+        ws_logits_batch, mus_batch, covs_batch = weight_logits[None], mus[None], covs[None]
+        test_ll_xs = log_prob_multivariate_Gaussian_mixture(test_xs, ws_logits_batch, mus_batch, covs_batch)
+        train_ll_xs = log_prob_multivariate_Gaussian_mixture(train_xs, ws_logits_batch, mus_batch, covs_batch)
+
         test_lls.append(test_ll_xs.mean().item())
         train_lls.append(train_ll_xs.mean().item())
 
