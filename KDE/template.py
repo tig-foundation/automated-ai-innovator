@@ -2,8 +2,9 @@ import numpy as np
 from scipy.special import logsumexp, log_softmax
 
 import time
+import textwrap
 
-import src
+import autoinnovator
 
 
 # problem instance
@@ -28,50 +29,50 @@ def generate_samples(rng, x, width=8, layers=3):
 
 
 # algorithm
-algorithm_prompt = """
-Write a function that takes in training data points of shape (num_train_pts, dims) and returns Gaussian mixture model parameters: component unnormalised weight logits of shape (num_comps,), component means (num_comps, dims) and component covariances (num_comps, dims, dims). 
-You are implementing kernel density estimation using some form of bandwidth selection heuristic for your base kernel of choice.
-Use only NumPy and implement the rest from scratch.
-"""
+algorithm_prompt = textwrap.dedent("""
+    Write a function that takes in training data points of shape (num_train_pts, dims) and returns Gaussian mixture model parameters: component unnormalised weight logits of shape (num_comps,), component means (num_comps, dims) and component covariances (num_comps, dims, dims). 
+    You are implementing kernel density estimation using some form of bandwidth selection heuristic for your base kernel of choice.
+    Use only NumPy and implement the rest from scratch.
+""")
 
 
-first_algorithm = """
-import numpy as np
+first_algorithm = textwrap.dedent("""
+    import numpy as np
 
 
-def algorithm_func(train_xs):
-    \"\"\"
-    This algorithm implements Gaussian kernel density estimation using Silverman
+    def algorithm_func(train_xs):
+        \"\"\"
+        This algorithm implements Gaussian kernel density estimation using Silverman
 
-    :param np.ndarray train_xs: training data points (num_train_pts, dims)
-    :return:
-        weight_logits (num_comps,)
-        mus (num_comps, dims)
-        covs (num_comps, dims, dims)
-    \"\"\"
-    num_pts, dims = train_xs.shape
-    std_devs = train_xs.std(0, keepdims=True)
-    silverman_bws = 1.06 * std_devs * num_pts ** (-1 / 5)  # Silverman's rule
+        :param np.ndarray train_xs: training data points (num_train_pts, dims)
+        :return:
+            weight_logits (num_comps,)
+            mus (num_comps, dims)
+            covs (num_comps, dims, dims)
+        \"\"\"
+        num_pts, dims = train_xs.shape
+        std_devs = train_xs.std(0, keepdims=True)
+        silverman_bws = 1.06 * std_devs * num_pts ** (-1 / 5)  # Silverman's rule
 
-    num_comps = num_pts  # place one Gaussian at every point
-    weight_logits = np.zeros(num_comps)  # uniform weighting
-    mus = train_xs
-    sigmas = np.broadcast_to(silverman_bws, (num_comps, dims))
-    covs = np.einsum('...i,jk->...jk', sigmas ** 2, np.eye(dims))
+        num_comps = num_pts  # place one Gaussian at every point
+        weight_logits = np.zeros(num_comps)  # uniform weighting
+        mus = train_xs
+        sigmas = np.broadcast_to(silverman_bws, (num_comps, dims))
+        covs = np.einsum('...i,jk->...jk', sigmas ** 2, np.eye(dims))
 
-    return weight_logits, mus, covs
-"""
+        return weight_logits, mus, covs
+""")
 
 
 
 # LLM feedback
-feedback_prompt = """
-Target score to maximize is test likelihoods (Gaussian mixture model evaluated on num_test_pts test data points) on a fixed set of problem instances (different datasets, here we test on 64 instances), we provide both per instance likelihoods and a single average over instances. In addition, you will get:
-- Train data likelihoods (per instance and averaged)
-- Time to run evaluation for all instances (we want this to be as low as possible, but prioritize the target score)
-- Code complexity score (length of the Python code in bytes, we prefer algorithms where this is not too high)
-You can come up with your own internal objective function (e.g. average test likelihood penalised by code complexity or so)
-"""
+feedback_prompt = textwrap.dedent("""
+    Target score to maximize is test likelihoods (Gaussian mixture model evaluated on num_test_pts test data points) on a fixed set of problem instances (different datasets, here we test on 64 instances), we provide both per instance likelihoods and a single average over instances. In addition, you will get:
+    - Train data likelihoods (per instance and averaged)
+    - Time to run evaluation for all instances (we want this to be as low as possible, but prioritize the target score)
+    - Code complexity score (length of the Python code in bytes, we prefer algorithms where this is not too high)
+    You can come up with your own internal objective function (e.g. average test likelihood penalised by code complexity or so)
+""")
 
 
 _log_twopi = np.log(2 * np.pi)
@@ -111,7 +112,7 @@ def log_prob_multivariate_Gaussian_mixture(xs, ws_logits, mus, covs):
 
 
 
-def EvaluateAlgorithm(instances_seed, challenge_params, algo_script_file: str):
+def EvaluateAlgorithm(instances_seed: int, challenge_params: dict, algo_script_file: str):
     """
     Generate problem instances and applies it to the algorithm
 
@@ -123,7 +124,7 @@ def EvaluateAlgorithm(instances_seed, challenge_params, algo_script_file: str):
     with open(algo_script_file, 'r') as f:
         algo_code_len = len(f.read())
 
-    algorithm_func, = src.utils.import_model_specific_symbols(algo_script_file, ['algorithm_func'])
+    algorithm_func, = autoinnovator.utils.import_model_specific_symbols(algo_script_file, ['algorithm_func'])
     
     # evaluation
     num_instances = 64
@@ -165,7 +166,7 @@ def EvaluateAlgorithm(instances_seed, challenge_params, algo_script_file: str):
     return results
 
 
-def ConstructFeedback(evaluation_results):
+def ConstructFeedback(evaluation_results: dict):
     """
     Construct the performance feedback prompt
     """

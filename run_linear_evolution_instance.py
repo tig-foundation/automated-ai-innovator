@@ -1,5 +1,5 @@
 """
-Script to run innovator submissions in the benchmarker training environment
+Script to run a simple linear evolution chain on a challenge problem
 """
 
 import argparse
@@ -10,7 +10,7 @@ import textwrap
 import traceback
 import time
 
-import src
+import autoinnovator
 
 
 response_format_prompt = textwrap.dedent("""
@@ -75,40 +75,40 @@ def main():
     NANOGPT_APIKEY = os.getenv("NANOGPT_APIKEY")
 
     # setup
-    #LLM_prompt_time_ms = int(time.time() * 1000)  # ms, include as we don't have seed control of LLM API
+    LLM_prompt_time_ms = int(time.time() * 1000)  # ms, include as we don't have seed control of LLM API
     instances_dir = args.experiment_foldername + '/' + args.config_foldername + '/'
-        
-    instance_foldername = f'seed{args.seed}iters{args.max_prompt_iters}'#time{LLM_prompt_time_ms}'
+    
+    instance_foldername = f'seed{args.seed}iters{args.max_prompt_iters}time{LLM_prompt_time_ms}'
     exp_fulldir = instances_dir + instance_foldername + '/'
     os.makedirs(exp_fulldir, exist_ok=True)
 
     run_expname = args.experiment_foldername + '_' + args.config_foldername
-    logger = src.logger.setup_logger(
+    logger = autoinnovator.logger.setup_logger(
         f'run_linear_evolution_instance_{run_expname}', 
         exp_fulldir + 'run.log', 
     )
     
     # challenge config
     config_file = instances_dir + 'config.py'
-    LLM_temperature, LLM_name, challenge_params = src.utils.import_model_specific_symbols(
+    LLM_temperature, LLM_name, challenge_params = autoinnovator.utils.import_model_specific_symbols(
         config_file, ['LLM_temperature', 'LLM_name', 'challenge_params'])
     
     # system prompt generation and import Python function symbols
     template_file = args.experiment_foldername + '/template.py'
-    algorithm_prompt, feedback_prompt, first_algorithm = src.utils.import_model_specific_symbols(
+    algorithm_prompt, feedback_prompt, first_algorithm = autoinnovator.utils.import_model_specific_symbols(
         template_file, ['algorithm_prompt', 'feedback_prompt', 'first_algorithm'])
     system_prompt = build_system_prompt(
         algorithm_prompt, challenge_params, feedback_prompt, response_format_prompt, first_algorithm)
 
-    EvaluateAlgorithm, ConstructFeedback = src.utils.import_model_specific_symbols(
+    EvaluateAlgorithm, ConstructFeedback = autoinnovator.utils.import_model_specific_symbols(
         template_file, ['EvaluateAlgorithm', 'ConstructFeedback'])
     
     # create the LLM API model
     logger.info("Building LLM API model...")
-    api = src.llm.OpenAIAPI(provider="nanogpt")
+    api = autoinnovator.llm.OpenAIAPI(provider="nanogpt")
     api.set_api_key(NANOGPT_APIKEY)
 
-    model = src.llm.BaseLLM(LLM_name, LLM_temperature)
+    model = autoinnovator.llm.BaseLLM(LLM_name, LLM_temperature)
     model.set_api(api)
     model.set_system_prompt(system_prompt)
 
@@ -125,7 +125,8 @@ def main():
 
     evalfeedback_prompt_dict, reasontext_dict = {}, {}
     while algo_id < args.max_prompt_iters + 1:
-        if retry_err == "":
+
+        if retry_err == "":  # algorithm code was valid, export and evaluate program
             with open(exp_fulldir + f'algo{algo_id}.py', 'w') as f:
                 f.write(pycode)
             
@@ -167,6 +168,7 @@ def main():
                 algo_id += 1
 
             except Exception as err:  # retry at same algorithm index
+                logger.info("Proposed program was invalid, retrying generation...")
                 retry_err = 'Response formatting error: ' + str(err) + f'\nReminder about response formatting: {response_format_prompt}\nRetry previous prompt:\n'
             
         else:

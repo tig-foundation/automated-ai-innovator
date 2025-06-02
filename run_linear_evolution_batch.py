@@ -1,58 +1,74 @@
 """
-Script to run multiple challenge instances in a linear evolution fashion in parallel in batches
+Script to run multiple linear evolution chains in parallel in batches
 """
 
 import argparse
 import os
 import subprocess
+import textwrap
 import time
 
 from dotenv import load_dotenv, find_dotenv
 
-from src.utils import import_model_specific_symbols, setup_logger
+
+
+def GenerateBashCmds(
+    venv_path: str, 
+    env_name: str, 
+    seeds: list[int], 
+    experiment_foldername: str, 
+    config_foldername: str, 
+    max_prompt_iters: int, 
+    verbose: bool, 
+):
+    """
+    Generate linear evolution instance launches within a Python virtual environment
+    """
+    bash_cmds = []
+    for seed in seeds:
+        verbose_str = "--verbose" if verbose else ""
+        bash_cmd = textwrap.dedent(f"""
+            . {venv_path}
+            python3 run_linear_evolution_instance.py --env_name {env_name} --seed {seed} --experiment_foldername {experiment_foldername} --config_foldername {config_foldername} --max_prompt_iters {max_prompt_iters} {verbose_str}
+        """)
+
+        bash_cmds.append(bash_cmd)
+
+    return bash_cmds
 
 
 
 def RunCommands(
-    logger, 
-    processes: list[list[str]],
-    devices: list[str],
-    max_parallel_cmds_per_iter: list[int],
+    processes: list[str],
+    max_parallel_cmds: int,
     startup_interval_sec: float, 
 ):
     """
-    Run commands in parallel using multiprocessing, potentially spreading over multiple devices
+    Run commands in parallel using multiprocessing
     
-    :param list[list[str]] processes: list of commands to run using subprocess.Popen
-    :param list[str] devices: list of devices to run commands on
-    :param list[int] max_parallel_cmds_per_iter: list of maximum number of commands to run in parallel per device
+    :param list[str] processes: list of commands to run using subprocess.Popen
+    :param int max_parallel_cmds: list of maximum number of commands to run in parallel per device
     :param float startup_interval_sec: interval between starting each command to avoid too much synchronous load
     """
-    active_processes = {name: [] for name in devices}
+    active_processes = []
     for i in range(len(processes)):
-        logger.info(f'Launching bash process {i + 1}/{len(processes)}...')
+        print(f'Launching process {i + 1}/{len(processes)}...')
         
-        for use_device, max_per_device in zip(devices, max_parallel_cmds_per_iter):
-            if len(active_processes[use_device]) < max_per_device:
-                active_processes[use_device].append(subprocess.Popen(processes[i] + [use_device]))
-                time.sleep(startup_interval_sec)
-                break
+        if len(active_processes) < max_parallel_cmds:
+            active_processes.append(subprocess.Popen(['bash', '-c', processes[i]]))
+            time.sleep(startup_interval_sec)
 
-        while all([
-            len(active_processes[use_device]) == max_per_device \
-            for use_device, max_per_device in zip(devices, max_parallel_cmds_per_iter)
-        ]):
-            for use_device in devices:
-                for p in active_processes[use_device]:
-                    if p.poll() is not None:  # remove process that finished
-                        active_processes[use_device].remove(p)
-                        # p.returncode
-                        
+        while len(active_processes) == max_parallel_cmds:
+            for p in active_processes:
+                if p.poll() is not None:  # remove process that finished
+                    active_processes.remove(p)
+                    # p.returncode
+            
             time.sleep(0.1)  # wait 100 milliseconds before polling again
 
-    for use_device in devices:  # wait for all processes to finish
-        for p in active_processes[use_device]:
-            p.wait()
+    # wait for all processes to finish
+    for p in active_processes:
+        p.wait()
 
 
 
@@ -66,93 +82,51 @@ def main():
     parser.add_argument(
         "-v", "--version", action="version", version=f"{parser.prog} version 1.0.0"
     )
-    parser.add_argument("--scripting_dir", type=str, required=True)
-    parser.add_argument("--bashes_folder", default="bashes/", type=str)
-    parser.add_argument("--env_name", type=str, required=True)
 
-    # operation flags
+    # run flags
+    parser.add_argument("--env_name", action="store", type=str, required=True)
     parser.add_argument("--verbose", dest="verbose", action="store_true")
     parser.set_defaults(verbose=False)
-    parser.add_argument("--devices", default=["cpu"], nargs='+', type=str)
-    parser.add_argument("--max_parallel_searches_per_iter", default=[1], nargs='+', type=int)
+    parser.add_argument("--seeds", default=[1, 2, 3], type=int, nargs='+')
+    parser.add_argument("--max_parallel_runs", default=4, type=int)
     parser.add_argument("--startup_interval_sec", default=0.0, type=float)
 
-    # config
-    parser.add_argument("--experiment_foldername", type=str, required=True)
+    # file paths
+    parser.add_argument("--experiment_foldername", action="store", type=str, required=True)
+    parser.add_argument("--config_foldername", action="store", type=str, required=True)
+
+    # loop flags
+    parser.add_argument("--max_prompt_iters", default=256, type=int)
 
     args = parser.parse_args()
     
     # load environment variables
     load_dotenv(find_dotenv(args.env_name))
+    venv_path = os.getenv("VENV_PATH")
 
-    checkpoint_path = os.getenv("CHECKPOINTPATH")
-    venv_path = os.getenv("VENVPATH")
-
-    # setup names and folders
-    base_dir = args.scripting_dir + f'{args.experiment_foldername}/'
-    if not os.path.exists(base_dir):
-        os.makedirs(base_dir)
-    if not os.path.exists(base_dir + args.bashes_folder):
-        os.makedirs(base_dir + args.bashes_folder)
-
-    logger_name = 'run_instances_batch_' + args.experiment_foldername
-    logger = setup_logger(logger_name, base_dir + args.bashes_folder + 'run.log')
-
-    # symbols
-    logger.info(f'Loading Python symbols...')
-    template_file = args.scripting_dir + args.experiment_foldername + '/template.py'
     
     try:
-        BuildBashScripts, = import_model_specific_symbols(
-            template_file, ['BuildBashScripts']
-        )
-            
-    except Exception as e:
-        logger.error(f"Error loading symbols from {template_file}: {e}")
-        raise e
-
-
-    ###
-    # build bash scripts #
-    ###
-    logger.info(f'Building bash scripts...')
-    
-    try:
-        scriptnames = BuildBashScripts(
-            args.scripting_dir, 
-            checkpoint_path, 
+        processes = GenerateBashCmds(
             venv_path, 
+            args.env_name, 
+            args.seeds, 
             args.experiment_foldername, 
-            args.bashes_folder, 
-            args.output_optimiser_states,
-            args.double_arrays, 
+            args.config_foldername, 
+            args.max_prompt_iters, 
             args.verbose, 
         )
-        
-    except Exception as e:
-        logger.error(f"Error in building scripts: {e}")
-        raise e
-
-    ###
-    # execute bash scripts #
-    ###
-    
-    try:
-        processes = [["bash", f'{scriptname}.sh'] for scriptname in scriptnames]
 
         RunCommands(
-            logger,
             processes,
-            args.devices,
-            args.max_parallel_searches_per_iter,
+            args.max_parallel_runs,
             args.startup_interval_sec,
         )
   
     except Exception as e:
-        logger.error(f"Error in executing scripts: {e}")
+        print(f"Error in executing scripts: {e}")
         raise e
         
-    logger.info('Challenge instance ensemble finished.')
+    print('Batch run finished.')
 
 
 

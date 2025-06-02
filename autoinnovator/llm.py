@@ -95,8 +95,10 @@ class OpenAIAPI(BaseAPI):
         max_tokens: int = None, 
         top_p: float = None,
         frequency_penalty: float = None, 
-        presence_penalty: float = None
+        presence_penalty: float = None, 
+        seed: int = None, 
     ) -> tuple:
+
         if not self.api_key:
             return False, "API key not set"
         
@@ -122,6 +124,9 @@ class OpenAIAPI(BaseAPI):
         
         if presence_penalty is not None:
             payload["presence_penalty"] = presence_penalty
+
+        if seed is not None:
+            payload["seed"] = seed
         
         headers = {
             "Content-Type": "application/json",
