@@ -57,7 +57,7 @@ CHECKPOINT_PATH="/your/checkpoint/path/..."
 1. Add the new environment to Jupyter kernels 
 
 ```
-python3 -m ipykernel install --user --name=TIG_grad
+python3 -m ipykernel install --user --name=TIG_LLMinnovator
 ```
   
 2. Now one should be able to run the notebooks with all dependencies available using the `TIG_grad` IPython kernel.

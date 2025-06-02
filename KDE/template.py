@@ -29,7 +29,7 @@ def generate_samples(rng, x, width=8, layers=3):
 
 # algorithm
 algorithm_prompt = """
-Write a function that takes in training data points of shape (num_pts, D) and spits out a D-dimensional Gaussian mixture model through parameters: component weight logits of shape (num_comps,), component means (num_comps, D) and component covariances (num_comps, D, D). 
+Write a function that takes in training data points of shape (num_train_pts, dims) and returns Gaussian mixture model parameters: component unnormalised weight logits of shape (num_comps,), component means (num_comps, dims) and component covariances (num_comps, dims, dims). 
 You are implementing kernel density estimation using some form of bandwidth selection heuristic for your base kernel of choice.
 Use only NumPy and implement the rest from scratch.
 """
@@ -43,11 +43,11 @@ def algorithm_func(train_xs):
     \"\"\"
     This algorithm implements Gaussian kernel density estimation using Silverman
 
-    :param np.ndarray train_xs: training data points (num_pts, D)
+    :param np.ndarray train_xs: training data points (num_train_pts, dims)
     :return:
         weight_logits (num_comps,)
-        mus (num_comps, D)
-        covs (num_comps, D, D)
+        mus (num_comps, dims)
+        covs (num_comps, dims, dims)
     \"\"\"
     num_pts, dims = train_xs.shape
     std_devs = train_xs.std(0, keepdims=True)
@@ -66,7 +66,7 @@ def algorithm_func(train_xs):
 
 # LLM feedback
 feedback_prompt = """
-Target score to maximize is your test likelihoods on a fixed set of problem instances (different datasets, here we test on 64 instances), we provide both per instance likelihoods and a single average over instances. In addition, you will get:
+Target score to maximize is test likelihoods (Gaussian mixture model evaluated on num_test_pts test data points) on a fixed set of problem instances (different datasets, here we test on 64 instances), we provide both per instance likelihoods and a single average over instances. In addition, you will get:
 - Train data likelihoods (per instance and averaged)
 - Time to run evaluation for all instances (we want this to be as low as possible, but prioritize the target score)
 - Code complexity score (length of the Python code in bytes, we prefer algorithms where this is not too high)
@@ -79,9 +79,9 @@ _log_twopi = np.log(2 * np.pi)
 
 def log_prob_multivariate_Gaussian(xs, mus, covs):
     """
-    :param np.ndarray xs: evaluation points (..., D)
-    :param np.ndarray mus: means (..., D)
-    :param np.ndarray covs: covariance matrices (..., D, D)
+    :param np.ndarray xs: evaluation points (..., dims)
+    :param np.ndarray mus: means (..., dims)
+    :param np.ndarray covs: covariance matrices (..., dims, dims)
     :return:
         log probabilities (...)
     """
@@ -97,10 +97,10 @@ def log_prob_multivariate_Gaussian(xs, mus, covs):
 
 def log_prob_multivariate_Gaussian_mixture(xs, ws_logits, mus, covs):
     """
-    :param np.ndarray xs: evaluation points (..., num_pts, D)
+    :param np.ndarray xs: evaluation points (..., num_pts, dims)
     :param np.ndarray ws: mixture weights (..., num_pts, num_comps)
-    :param np.ndarray mus: means (..., num_pts, num_comps, D)
-    :param np.ndarray covs: covariances (..., num_pts, num_comps, D, D)
+    :param np.ndarray mus: means (..., num_pts, num_comps, dims)
+    :param np.ndarray covs: covariances (..., num_pts, num_comps, dims, dims)
     :return:
         log probabilities (..., num_pts)
     """

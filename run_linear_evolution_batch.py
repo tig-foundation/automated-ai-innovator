@@ -60,7 +60,7 @@ def main():
     # parser
     parser = argparse.ArgumentParser(
         usage="%(prog)s [options]",
-        description="Generate and launch multiple challenge instances.",
+        description="Launch multiple automated LLM innovator linear evolution instances.",
     )
 
     parser.add_argument(
@@ -71,10 +71,6 @@ def main():
     parser.add_argument("--env_name", type=str, required=True)
 
     # operation flags
-    parser.add_argument("--double_arrays", dest="double_arrays", action="store_true")
-    parser.set_defaults(double_arrays=False)
-    parser.add_argument("--output_optimiser_states", dest="output_optimiser_states", action="store_true")
-    parser.set_defaults(output_optimiser_states=False)
     parser.add_argument("--verbose", dest="verbose", action="store_true")
     parser.set_defaults(verbose=False)
     parser.add_argument("--devices", default=["cpu"], nargs='+', type=str)

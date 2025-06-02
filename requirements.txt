@@ -3,5 +3,4 @@ ipykernel
 numpy
 python-dotenv
 scipy
-scikit-learn
 matplotlib

@@ -1,3 +1,7 @@
+"""
+Logging setup utility
+"""
+
 import logging
 import sys
 
