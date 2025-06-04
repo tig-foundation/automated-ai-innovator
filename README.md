@@ -35,7 +35,7 @@ python3 -m pip install -r requirements.txt
 
 ```
 NANOGPT_APIKEY="123Example"
-VENV_PATH="/your/venv/path/..."
+VENV_PATH="/your/absolute/venv/path/..."
 ```
 
    

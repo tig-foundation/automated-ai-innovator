@@ -17,7 +17,7 @@ def GenerateBashCmds(
     env_name: str, 
     seeds: list[int], 
     experiment_foldername: str, 
-    config_foldername: str, 
+    config_name: str, 
     max_prompt_iters: int, 
     verbose: bool, 
 ):
@@ -29,7 +29,7 @@ def GenerateBashCmds(
         verbose_str = "--verbose" if verbose else ""
         bash_cmd = textwrap.dedent(f"""
             . {venv_path}
-            python3 run_linear_evolution_instance.py --env_name {env_name} --seed {seed} --experiment_foldername {experiment_foldername} --config_foldername {config_foldername} --max_prompt_iters {max_prompt_iters} {verbose_str}
+            python3 run_linear_evolution_instance.py --env_name {env_name} --seed {seed} --experiment_foldername {experiment_foldername} --config_name {config_name} --max_prompt_iters {max_prompt_iters} {verbose_str}
         """)
 
         bash_cmds.append(bash_cmd)
@@ -93,7 +93,7 @@ def main():
 
     # file paths
     parser.add_argument("--experiment_foldername", action="store", type=str, required=True)
-    parser.add_argument("--config_foldername", action="store", type=str, required=True)
+    parser.add_argument("--config_name", action="store", type=str, required=True)
 
     # loop flags
     parser.add_argument("--max_prompt_iters", default=256, type=int)
@@ -111,7 +111,7 @@ def main():
             args.env_name, 
             args.seeds, 
             args.experiment_foldername, 
-            args.config_foldername, 
+            args.config_name, 
             args.max_prompt_iters, 
             args.verbose, 
         )

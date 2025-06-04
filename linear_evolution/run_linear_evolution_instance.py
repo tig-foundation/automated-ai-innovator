@@ -77,7 +77,7 @@ def main():
 
     # setup
     LLM_prompt_time_ms = int(time.time() * 1000)  # ms, include as we don't have seed control of LLM API
-    instances_dir = args.path_to_challenges + args.experiment_foldername + '/' + args.config_name + '/'
+    challenge_dir = args.path_to_challenges + args.experiment_foldername + '/'
     checkpoint_dir = args.experiment_foldername + '/' + args.config_name + '/'
 
     instance_foldername = f'seed{args.seed}iters{args.max_prompt_iters}time{LLM_prompt_time_ms}'
@@ -91,12 +91,12 @@ def main():
     )
     
     # challenge config
-    config_file = instances_dir + 'config_.py'
+    config_file = challenge_dir + f'config_{args.config_name}.py'
     LLM_temperature, LLM_name, challenge_params = autoinnovator.utils.import_model_specific_symbols(
         config_file, ['LLM_temperature', 'LLM_name', 'challenge_params'])
     
     # system prompt generation and import Python function symbols
-    template_file = args.experiment_foldername + '/template.py'
+    template_file = challenge_dir + 'template.py'
     algorithm_prompt, feedback_prompt, first_algorithm = autoinnovator.utils.import_model_specific_symbols(
         template_file, ['algorithm_prompt', 'feedback_prompt', 'first_algorithm'])
     system_prompt = build_system_prompt(
