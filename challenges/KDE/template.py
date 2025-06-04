@@ -31,7 +31,7 @@ def generate_samples(rng, x, width=8, layers=3):
 # algorithm
 algorithm_prompt = textwrap.dedent("""
     Write a function that takes in training data points of shape (num_train_pts, dims) and returns Gaussian mixture model parameters: component unnormalised weight logits of shape (num_comps,), component means (num_comps, dims) and component covariances (num_comps, dims, dims). 
-    You are implementing kernel density estimation using some form of bandwidth selection heuristic for your base kernel of choice.
+    You are implementing kernel density estimation using some form of bandwidth selection and kernel placement heuristic.
     Use only NumPy and implement the rest from scratch.
 """)
 

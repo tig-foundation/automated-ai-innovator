@@ -51,8 +51,9 @@ def setup_parser(description):
     parser.add_argument("--seed", default=123, type=int)
 
     # file paths
+    parser.add_argument("--path_to_challenges", default='../challenges/', type=str)
     parser.add_argument("--experiment_foldername", action="store", type=str, required=True)
-    parser.add_argument("--config_foldername", action="store", type=str, required=True)
+    parser.add_argument("--config_name", action="store", type=str, required=True)
 
     # loop flags
     parser.add_argument("--max_prompt_iters", default=256, type=int)
@@ -76,20 +77,21 @@ def main():
 
     # setup
     LLM_prompt_time_ms = int(time.time() * 1000)  # ms, include as we don't have seed control of LLM API
-    instances_dir = args.experiment_foldername + '/' + args.config_foldername + '/'
-    
+    instances_dir = args.path_to_challenges + args.experiment_foldername + '/' + args.config_name + '/'
+    checkpoint_dir = args.experiment_foldername + '/' + args.config_name + '/'
+
     instance_foldername = f'seed{args.seed}iters{args.max_prompt_iters}time{LLM_prompt_time_ms}'
-    exp_fulldir = instances_dir + instance_foldername + '/'
+    exp_fulldir = checkpoint_dir + instance_foldername + '/'
     os.makedirs(exp_fulldir, exist_ok=True)
 
-    run_expname = args.experiment_foldername + '_' + args.config_foldername
+    run_expname = args.experiment_foldername + '_' + args.config_name
     logger = autoinnovator.logger.setup_logger(
         f'run_linear_evolution_instance_{run_expname}', 
         exp_fulldir + 'run.log', 
     )
     
     # challenge config
-    config_file = instances_dir + 'config.py'
+    config_file = instances_dir + 'config_.py'
     LLM_temperature, LLM_name, challenge_params = autoinnovator.utils.import_model_specific_symbols(
         config_file, ['LLM_temperature', 'LLM_name', 'challenge_params'])
     
