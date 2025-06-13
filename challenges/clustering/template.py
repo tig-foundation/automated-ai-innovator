@@ -37,28 +37,20 @@ algorithm_prompt = textwrap.dedent("""
 
 first_algorithm = textwrap.dedent("""
     import numpy as np
+    from sklearn.cluster import KMeans
 
-    def algorithm_func(train_xs):
+    def algorithm_func(xs):
         \"\"\"
-        This algorithm implements simple binning based on uniform intervals in quantile space.
+        This algorithm implements simple k-means clustering with a fixed arbitrary number of clusters (not data-based).
 
-        :param np.ndarray train_xs: training data points (num_train_pts, dims)
+        :param np.ndarray xs: training data points (num_pts, dims)
         :return:
-            bin_edges list[float]
+            cluster indices (num_pts,)
         \"\"\"
-        num_bins = 8  # an arbitrarily chosen number of bins
+        n_clusters = 3  # arbitrarily chosen
+        cluster_inds = KMeans(n_clusters=n_clusters, n_init=10, random_state=42).fit_predict(xs) + 1
 
-        quantile_vals = np.linspace(0, 1, num_bins + 1)
-        sort_inds = np.argsort(x_vals)
-
-        # get indices corresponding to nearest to quantile values
-        quantile_inds = [int(v * (len(sort_inds) - 1)) for v in quantile_vals]
-
-        # convert from quantile to actual values
-        bin_edges = np.sort(x_vals)[quantile_inds]
-        bin_edges = [-1] + bin_edges.tolist()[1:-1] + [1]  # ensure edges cover the valid domain
-
-        return bin_edges
+        return cluster_inds
 """)
 
 
@@ -110,7 +102,7 @@ def EvaluateAlgorithm(instances_seed: int, challenge_params: dict, algo_script_f
     :return:
         evaluation performance results that is added to feedback prompt
     """
-    dims = 1
+    dims = challenge_params['dims']
 
     with open(algo_script_file, 'r') as f:
         algo_code_len = len(f.read())
@@ -121,35 +113,26 @@ def EvaluateAlgorithm(instances_seed: int, challenge_params: dict, algo_script_f
     num_instances = 64
     start_time = time.time()
 
-    test_lls, train_lls = [], []
+    cluster_scores = []
     for i in range(num_instances):
         seed = instances_seed + i
 
         rng_samps = np.random.default_rng(seed + 1)
 
-        num_samples = challenge_params['num_train_pts']
+        num_samples = challenge_params['num_pts']
         z = rng_samps.normal(size=(num_samples, dims))
         rng_params = np.random.default_rng(seed)
-        train_xs = generate_samples(rng_params, z)[:, 0]
+        xs = generate_samples(rng_params, z)
 
-        num_samples = challenge_params['num_test_pts']
-        z = rng_samps.normal(size=(num_samples, dims))
-        rng_params = np.random.default_rng(seed)
-        test_xs = generate_samples(rng_params, z)[:, 0]
+        cluster_inds = algorithm_func(xs)
+        score = pairwise_connectivity_score(xs, cluster_inds, n_neighbors=10)
 
-        bin_edges = algorithm_func(train_xs)
-        test_ll_xs = histogram_log_likelihood(test_xs, bin_edges, train_xs)
-        train_ll_xs =histogram_log_likelihood(test_xs, bin_edges, train_xs)
-
-        test_lls.append(test_ll_xs.mean().item())
-        train_lls.append(train_ll_xs.mean().item())
+        cluster_scores.append(score)
 
     elapsed_time_seconds = time.time() - start_time
     results = {
-        'test_log_likelihood_average': np.array(test_lls).mean().item(), 
-        'test_log_likelihood_per_instance': test_lls, 
-        'train_log_likelihood_average': np.array(train_lls).mean().item(), 
-        'train_log_likelihood_per_instance': train_lls, 
+        'cluster_scores_average': np.array(cluster_scores).mean().item(), 
+        'cluster_scores_per_instance': cluster_scores, 
         'algo_code_len': algo_code_len, 
         'elapsed_time_seconds': elapsed_time_seconds, 
     }
