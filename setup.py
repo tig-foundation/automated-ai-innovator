@@ -6,9 +6,6 @@ setup(
     version="0.1",
     description="Automated LLM innovator",
     license="MIT",
-    install_requires=[
-        'numpy', 
-        'scipy', 
-    ],
+    install_requires=[],
     packages=find_packages(),
 )

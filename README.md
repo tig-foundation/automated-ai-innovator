@@ -29,13 +29,14 @@ Note it is a good habit to specify the exact Python version `python3.xx -m venv 
     
 ```
 python3 -m pip install -r requirements.txt
+python3 -m pip install -e .
 ```
 
 4. Set up the `.env` file in the root directory for local paths and variables
 
 ```
 NANOGPT_APIKEY="123Example"
-VENV_PATH="/your/absolute/venv/path/..."
+VENV_PATH="/your/absolute/venv/path/.../bin/activate"
 ```
 
    
@@ -55,3 +56,19 @@ python3 -m ipykernel install --user --name=TIG_LLMinnovator
 2. Now one should be able to run the notebooks with all dependencies available using the `TIG_LLMinnovator` IPython kernel.
 
 </details>
+
+
+
+### References
+
+Implementations of [FunSearch](https://deepmind.google/discover/blog/funsearch-making-new-discoveries-in-mathematical-sciences-using-large-language-models/):
+    - [https://github.com/google-deepmind/funsearch](https://github.com/google-deepmind/funsearch)
+    - [https://github.com/RayZhhh/funsearch](https://github.com/RayZhhh/funsearch)
+    - [https://github.com/Remmie0/OpenFunsearch](https://github.com/Remmie0/OpenFunsearch)
+
+Open source implementations of [AlphaEvolve](https://deepmind.google/discover/blog/alphaevolve-a-gemini-powered-coding-agent-for-designing-advanced-algorithms/):
+    - [https://github.com/codelion/openevolve](https://github.com/codelion/openevolve)
+    - [https://github.com/shyamsaktawat/OpenAlpha_Evolve](https://github.com/shyamsaktawat/OpenAlpha_Evolve)
+
+Other related works:
+    - [Darwin Gödel Machine: Open-Ended Evolution of Self-Improving Agents](https://github.com/jennyzzt/dgm)
