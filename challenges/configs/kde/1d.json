@@ -1,0 +1,10 @@
+{
+    "base_algorithm": "silverman",
+    "parameters": {
+        "dims": 1,
+        "num_train_points": 512,
+        "num_test_points": 128
+    },
+    "seed": 19047851,
+    "num_instances": 64
+}
