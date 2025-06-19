@@ -5,15 +5,14 @@ import sys
 
 
 class Challenge:
-    def __init__(self, name: str, config_id: str):
+    def __init__(self, name: str):
         self.name = name
-        self.config_id = config_id
         self._config = None
         self._base_algorithm = None
 
     @property
     def config_path(self) -> str:
-        return os.path.join('challenges', 'configs', self.name, f'{self.config_id}.json')
+        return os.path.join('challenges', 'configs', f'{self.name}.json')
 
     @property
     def config(self) -> dict:
@@ -24,7 +23,7 @@ class Challenge:
 
     @property
     def base_algorithm_path(self) -> str:
-        return os.path.join('challenges', 'base_algos', self.name, f'{self.config["base_algorithm"]}.py')
+        return os.path.join('challenges', 'base_algos', f'{self.name}_{self.config["base_algorithm"]}.py')
 
     @property
     def base_algorithm(self) -> str:

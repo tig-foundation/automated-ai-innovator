@@ -1,0 +1,9 @@
+{
+    "base_algorithm": "k_means",
+    "parameters": {
+        "dims": 2,
+        "num_points": 4096
+    },
+    "seed": 19047851,
+    "num_instances": 64
+}

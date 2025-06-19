@@ -1,7 +1,6 @@
 {
-    "base_algorithm": "silverman",
+    "base_algorithm": "simple",
     "parameters": {
-        "dims": 1,
         "num_train_points": 512,
         "num_test_points": 128
     },

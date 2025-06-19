@@ -122,18 +122,21 @@ class AutoInnovatorBase(ABC):
                 json.dump(prompt_kwargs, f)
             print(f"Gen {ctx.curr_generation}, Candidate {candidate_id}: create_prompt_kwargs (done, took {time() - start:.2f} seconds)")
 
+            start = time()
             print(f"Gen {ctx.curr_generation}, Candidate {candidate_id}: llm.send_prompt (starting)")
             response = self.llm.send_prompt(**prompt_kwargs)
             with open(candidate.response_path, 'w') as f:
                 json.dump(response, f)
             print(f"Gen {ctx.curr_generation}, Candidate {candidate_id}: llm.send_prompt (done, took {time() - start:.2f} seconds)")
 
+            start = time()
             print(f"Gen {ctx.curr_generation}, Candidate {candidate_id}: extract_algorithm_code (starting)")
             algorithm_code = self.extract_algorithm_code(response)
             with open(candidate.algorithm_path, 'w') as f:
                 f.write(algorithm_code)
             print(f"Gen {ctx.curr_generation}, Candidate {candidate_id}: extract_algorithm_code (done, took {time() - start:.2f} seconds)")
 
+            start = time()
             print(f"Gen {ctx.curr_generation}, Candidate {candidate_id}: evaluate_algorithm (starting)")
             self.challenge.evaluate_algorithm(
                 candidate.algorithm_path, 

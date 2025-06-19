@@ -63,19 +63,15 @@ def log_prob_multivariate_Gaussian_mixture(xs, ws_logits, mus, covs):
     return logsumexp(log_ws + log_probs, axis=-1)  # (..., num_pts)
 
 
-
 def generate_instance(dims: int, num_train_points: int, num_test_points: int) -> dict:
     """
     Generate problem instance
-
-    :return:
-        evaluation performance results that is added to feedback prompt
     """
-    train_z = np.random.normal(size=(num_train_points, dims))
-    train_points = generate_samples(train_z)
+    z = np.random.normal(size=(num_train_points + num_test_points, dims))
+    points = generate_samples(z)
 
-    test_z = np.random.normal(size=(num_test_points, dims))
-    test_points = generate_samples(test_z)
+    train_points = points[:num_train_points]
+    test_points = points[num_train_points:]
 
     return dict(
         train_points=train_points,
@@ -150,11 +146,6 @@ if __name__ == "__main__":
         os.makedirs(evaluation_dir, exist_ok=True)
 
     parameters = json.loads(args.parameters)
-    np.random.seed(args.seed)
-    instances = [
-        generate_instance(**parameters) 
-        for _ in range(args.instances)
-    ]
     spec = importlib.util.spec_from_file_location(
         os.path.splitext(os.path.basename(args.algorithm))[0], 
         args.algorithm
@@ -163,6 +154,11 @@ if __name__ == "__main__":
     spec.loader.exec_module(module)
 
     start = time()
+    np.random.seed(args.seed)
+    instances = [
+        generate_instance(**parameters) 
+        for i in range(args.instances)
+    ]
     results = [
         evaluate_algorithm(instance, module.algorithm, None if i >= args.visualisations else f"{args.output}/visualisation_{i}.png")
         for i, instance in enumerate(instances)

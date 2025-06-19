@@ -1,4 +1,5 @@
 __pycache__/
+experiments/
 .DS_Store
 .ipynb_checkpoints
 */.ipynb_checkpoints/*

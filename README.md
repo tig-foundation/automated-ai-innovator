@@ -16,7 +16,7 @@ TODO
 
 3. Run the example
     ```
-    python example.py
+    python -m example.main clustering
     ```
 
 ## How it works
