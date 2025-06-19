@@ -19,7 +19,7 @@ response_format_prompt = textwrap.dedent("""
 """)
 
 
-def build_system_prompt(algorithm_prompt, challenge_params, feedback_prompt, response_format_prompt, first_algorithm):
+def build_system_prompt(algorithm_prompt, challenge_params, feedback_prompt, response_format_prompt):
     return textwrap.dedent(f"""
         Code up an algorithm in Python 3 with the following goals and specifications: {algorithm_prompt}
         I will run your algorithm on a set of problem instances and report back to you the algorithm code I ran with your provided reasoning of writing this algorithm as well as evaluation results feedback.
@@ -29,8 +29,7 @@ def build_system_prompt(algorithm_prompt, challenge_params, feedback_prompt, res
         If there is a bug, you will instead receive the corresponding error from the Python interpreter.
         We keep iterating to improve your candidate algorithm target score. Keep your responses short: first part is only your code annotated with comments to explain where necessary; second part is your summary of changes and your reasoning/thoughts on why you chose those.
         For your response, adhere to the format: {response_format_prompt}
-        I start with running the seed algorithm implementation: {first_algorithm}
-        Then I will report back to you the evaluation feedback in the prompt format as discussed previously.
+        To kickstart the improvement cycle, I start with providing the seed algorithm implementation under "ALGORITHM:" and report back to you the corresponding evaluation feedback under "EVALUATION:" in the prompt format as discussed previously.
     """)
 
 
@@ -100,7 +99,7 @@ def main():
     algorithm_prompt, feedback_prompt, first_algorithm = autoinnovator.utils.import_model_specific_symbols(
         template_file, ['algorithm_prompt', 'feedback_prompt', 'first_algorithm'])
     system_prompt = build_system_prompt(
-        algorithm_prompt, challenge_params, feedback_prompt, response_format_prompt, first_algorithm)
+        algorithm_prompt, challenge_params, feedback_prompt, response_format_prompt)
 
     EvaluateAlgorithm, ConstructFeedback = autoinnovator.utils.import_model_specific_symbols(
         template_file, ['EvaluateAlgorithm', 'ConstructFeedback'])
@@ -122,17 +121,18 @@ def main():
     start_time = time.time()
 
     pycode = first_algorithm
+    reasontext = "This is the initial seed program.\n"
     retry_err = ""
     algo_id = 1
 
     evalfeedback_prompt_dict, reasontext_dict = {}, {}
     while algo_id < args.max_prompt_iters + 1:
 
-        if retry_err == "":  # algorithm code was valid, export and evaluate program
+        if retry_err == "":  # LLM respnose structure was valid, export and evaluate program
             with open(exp_fulldir + f'algo{algo_id}.py', 'w') as f:
                 f.write(pycode)
             
-            try:
+            try:  # see if the LLM Python program executes
                 eval_results = EvaluateAlgorithm(args.seed, challenge_params, exp_fulldir + f'algo{algo_id}.py')
                 try:
                     evalfeedback_prompt = ConstructFeedback(eval_results)
@@ -140,7 +140,7 @@ def main():
                     error_str = traceback.format_exc()
                     evalfeedback_prompt = 'ConstructFeedback error: ' + str(err) + "\nTraceback: " + error_str
 
-            except Exception as err:
+            except Exception as err:  # return Python interpreter error as feedback
                 error_str = traceback.format_exc()
                 evalfeedback_prompt = 'EvaluateAlgorithms error: ' + str(err) + "\nTraceback: " + error_str
 
@@ -154,8 +154,11 @@ def main():
                 break  # finish with final feedback
 
         logger.info(f"Sending algorithm {algo_id} prompt...")
-        full_prompt = retry_err + "ALGORITHM:\n" + first_algorithm + "REASONING:\n" + "This is the initial seed program.\n" + \
+        full_prompt = retry_err + "ALGORITHM:\n" + pycode + "REASONING:\n" + reasontext + \
             "EVALUATION:\n" + evalfeedback_prompt
+        if args.verbose:
+            logger.info("Full prompt sent:\n" + full_prompt)
+
         receive_status, receive_message = model.send_prompt(full_prompt)
         if receive_status:
             try:
