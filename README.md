@@ -13,7 +13,9 @@ Each candidate is generated independently but has access to the full history of 
 
 ## Quick Start
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tig-foundation/automated-ai-innovator/blob/main/quick_start.ipynb)
+<a href="https://colab.research.google.com/github/tig-foundation/automated-ai-innovator/blob/main/quick_start.ipynb" target="_blank">
+  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
+</a>
 
 ## License
 
