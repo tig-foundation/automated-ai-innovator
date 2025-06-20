@@ -37,7 +37,7 @@ def pairwise_connectivity_score(X, labels, n_neighbors=10):
     - n_neighbors: int, number of nearest neighbors to consider
 
     Returns:
-    - connectivity_score: float (lower is better)
+    - connectivity_score: float (value is <= 0, higher is better)
     """
     X = np.asarray(X)
     labels = np.asarray(labels)
@@ -55,7 +55,7 @@ def pairwise_connectivity_score(X, labels, n_neighbors=10):
         for rank, j in enumerate(indices[i]):
             if labels[i] != labels[j]:
                 # Penalize by inverse rank (rank+1 since rank starts at 0)
-                score += 1.0 / (rank + 1)
+                score -= 1.0 / (rank + 1)
     
     return score
 

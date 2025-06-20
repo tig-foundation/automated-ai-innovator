@@ -15,7 +15,10 @@ All prompts I send you thus contains three parts marked by "ALGORITHM:", "REASON
 
 The evaluation feedback contains:
 ```
-Target score to maximize is a graph-based connectivity score of all clusters on a fixed set of problem instances (different datasets, here we test on 64 instances).
+Target score to maximize is a pairwise neighbourhood-based connectivity score, which has a highest possible value of 0, of the cluster assignment on a fixed set of problem instances (different datasets, here we test on 64 instances), we provide both per instance connectivity scores and a single average over instances. In addition, you will get:
+- Time to run evaluation for all instances (we want this to be as low as possible, but prioritize the target score)
+- Code complexity score (length of the Python code in bytes, we prefer algorithms where this is not too high)
+You can come up with your own internal objective function (e.g. average connectivity score penalised by code complexity or so)
 ```
 
 If there is a bug, you will instead receive the corresponding error from the Python interpreter.
@@ -27,9 +30,4 @@ Format your output using XML tags as "<python>Code here</python><reasoning>Reaso
 In particular, you should include notes of ideas you tried that worked and did not work well in your reasoning response, as I will keep feeding this back your latest code modifications and you can remember why you made a particular change based on past experience to avoid making the same mistake or modification twice.
 ```
 
-I start with running the base algorithm implementation: 
-```
-{base_algorithm}
-```
-
-Then I will report back to you the evaluation feedback in the prompt format as discussed previously.
+To kickstart the improvement cycle, I start with providing the seed algorithm implementation under "ALGORITHM:" and report back to you the corresponding evaluation feedback under "EVALUATION:" in the prompt format as discussed previously
