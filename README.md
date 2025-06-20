@@ -19,4 +19,4 @@ Each candidate is generated independently but has access to the full history of 
 
 ## License
 
-TODO
+[Apache License 2.0](./LICENSE)
