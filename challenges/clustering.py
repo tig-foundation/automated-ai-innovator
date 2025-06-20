@@ -112,7 +112,7 @@ if __name__ == "__main__":
     parser.add_argument("seed", type=int, help="Seed for random number generation")
     parser.add_argument("instances", type=int, help="Number of instances to generate")
     parser.add_argument("--evaluation", type=str, help="File path to save JSON evaluation results. Prints to stdout by default", default=None)
-    parser.add_argument("--output", type=str, help="Output directory for visualisations", default="output")
+    parser.add_argument("--output", type=str, help="Path format for visualisations. Default {i:03}.png", default="{i:03}.png")
     parser.add_argument("--visualisations", type=int, help="Number of instances to visualise", default=0)
     args = parser.parse_args()
 
@@ -135,7 +135,7 @@ if __name__ == "__main__":
         for i in range(args.instances)
     ]
     results = [
-        evaluate_algorithm(instance, module.algorithm, None if i >= args.visualisations else f"{args.output}/visualisation_{i}.png")
+        evaluate_algorithm(instance, module.algorithm, None if i >= args.visualisations else args.output.format(i=i))
         for i, instance in enumerate(instances)
     ]
     elapsed_time = time() - start
@@ -144,7 +144,7 @@ if __name__ == "__main__":
     results = {
         "cluster_scores_average": np.array(cluster_scores).mean().item(), 
         "cluster_scores_per_instance": cluster_scores,
-        "elapsed_time_seconds": elapsed_time, 
+        "elapsed_seconds": elapsed_time, 
     }
     if args.evaluation:
         with open(args.evaluation, "w") as f:

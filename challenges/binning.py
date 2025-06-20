@@ -87,7 +87,7 @@ def evaluate_algorithm(instance: dict, algorithm: callable, plot_image_path: str
         hist, _ = np.histogram(instance["points"], bins=bin_edges, density=True)
         density_bar = hist[np.newaxis, :]  # shape (1, bins)
         
-        hist_gt, bin_edges_gt = np.histogram(instance["points"], bins=100, density=True)
+        hist_gt, bin_edges_gt = np.histogram(instance["points"], bins=1000, density=True)
         density_bar_gt = hist_gt[np.newaxis, :]  # shape (1, bins)
         
         plt.figure(figsize=(10, 2.5))
@@ -101,9 +101,8 @@ def evaluate_algorithm(instance: dict, algorithm: callable, plot_image_path: str
         ax2.imshow(density_bar_gt, aspect='auto', cmap='Oranges',
                 extent=[bin_edges_gt[0], bin_edges_gt[-1], 0, 1])
         ax2.set_yticks([])
-        ax2.set_title("Ground Truth Density")
+        ax2.set_title("Empirical Sampled Density")
 
-        # Save to file
         plt.tight_layout()
         plt.savefig(plot_image_path)
         plt.close()
@@ -124,7 +123,7 @@ if __name__ == "__main__":
     parser.add_argument("seed", type=int, help="Seed for random number generation")
     parser.add_argument("instances", type=int, help="Number of instances to generate")
     parser.add_argument("--evaluation", type=str, help="File path to save JSON evaluation results. Prints to stdout by default", default=None)
-    parser.add_argument("--output", type=str, help="Output directory for visualisations", default="output")
+    parser.add_argument("--output", type=str, help="Path format for visualisations. Default {i:03}.png", default="{i:03}.png")
     parser.add_argument("--visualisations", type=int, help="Number of instances to visualise", default=0)
     args = parser.parse_args()
 
@@ -147,7 +146,7 @@ if __name__ == "__main__":
         for i in range(args.instances)
     ]
     results = [
-        evaluate_algorithm(instance, module.algorithm, None if i >= args.visualisations else f"{args.output}/visualisation_{i}.png")
+        evaluate_algorithm(instance, module.algorithm, None if i >= args.visualisations else args.output.format(i=i))
         for i, instance in enumerate(instances)
     ]
     elapsed_time = time() - start
@@ -159,7 +158,7 @@ if __name__ == "__main__":
         "test_log_likelihoods": test_log_likelihoods,
         "train_log_likelihood_average": np.mean(train_log_likelihoods).item(),
         "test_log_likelihood_average": np.mean(test_log_likelihoods).item(),
-        "elapsed_time": elapsed_time,
+        "elapsed_seconds": elapsed_time,
     }
     if args.evaluation:
         with open(args.evaluation, "w") as f:

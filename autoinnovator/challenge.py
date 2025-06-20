@@ -52,7 +52,7 @@ class Challenge:
         self, 
         algorithm_path: str,
         evaluation_path: str,
-        visualisations_dir: str,
+        visualisation_path: str,
         num_visualisations: int = 0
     ):
         cmd = [
@@ -63,7 +63,7 @@ class Challenge:
             str(self.seed),
             str(self.num_instances),
             "--evaluation", evaluation_path,
-            "--output", visualisations_dir,
+            "--output", visualisation_path,
             "--visualisations", str(num_visualisations)
         ]
         result = subprocess.run(
