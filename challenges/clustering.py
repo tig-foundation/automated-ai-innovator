@@ -89,8 +89,8 @@ def evaluate_algorithm(instance: dict, algorithm: callable, plot_image_path: str
 
     if plot_image_path:
         plt.figure()
-        plt.scatter(instance["points"][:, 0], instance["points"][:, 1], c=cluster_inds, cmap='viridis', s=20)
-        plt.title(f"Score: {cluster_score:.2f}")
+        plt.scatter(instance["points"][:, 0], instance["points"][:, 1], c=cluster_inds, cmap="Set1", s=5, alpha=0.25)
+        plt.title(f"Clustering (score: {cluster_score:.2f})")
         plt.xticks([])
         plt.yticks([])
         plt.tight_layout()

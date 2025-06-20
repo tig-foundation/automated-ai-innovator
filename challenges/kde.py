@@ -63,19 +63,23 @@ def log_prob_multivariate_Gaussian_mixture(xs, ws_logits, mus, covs):
     return logsumexp(log_ws + log_probs, axis=-1)  # (..., num_pts)
 
 
-def generate_instance(dims: int, num_train_points: int, num_test_points: int) -> dict:
+def generate_instance(dims: int, num_train_points: int, num_test_points: int, visualise: bool = False) -> dict:
     """
     Generate problem instance
     """
-    z = np.random.normal(size=(num_train_points + num_test_points, dims))
+    if visualise:
+        z = np.random.normal(size=((num_train_points + num_test_points) * 1024, dims))
+    else:
+        z = np.random.normal(size=(num_train_points + num_test_points, dims))
     points = generate_samples(z)
 
     train_points = points[:num_train_points]
-    test_points = points[num_train_points:]
+    test_points = points[num_train_points:num_train_points + num_test_points]
 
     return dict(
         train_points=train_points,
-        test_points=test_points
+        test_points=test_points,
+        points=points,
     )
 
 
@@ -99,24 +103,24 @@ def evaluate_algorithm(instance: dict, algorithm: callable, plot_image_path: str
     train_ll_xs = log_prob_multivariate_Gaussian_mixture(instance["train_points"], ws_logits_batch, mus_batch, covs_batch)
 
     if plot_image_path:
-        # evaluate GMM log prob
         grid_pts = 128
-        x = np.linspace(instance["train_points"][:, 0].min() - 0.5, instance["train_points"][:, 0].max() + 0.5, grid_pts)
-        y = np.linspace(instance["train_points"][:, 1].min() - 0.5, instance["train_points"][:, 1].max() + 0.5, grid_pts)
+        x = np.linspace(instance["points"][:, 0].min() - 0.5, instance["points"][:, 0].max() + 0.5, grid_pts)
+        y = np.linspace(instance["points"][:, 1].min() - 0.5, instance["points"][:, 1].max() + 0.5, grid_pts)
         X, Y = np.meshgrid(x, y)
         xy = np.stack([X, Y], axis=-1).reshape(-1, 2)  # (num_pts, 2)
         log_prob_xy = log_prob_multivariate_Gaussian_mixture(xy, ws_logits_batch, mus_batch, covs_batch).reshape(grid_pts, grid_pts)
         P = np.exp(log_prob_xy)
-        plt.figure(figsize=(8, 6))
-        plt.contourf(X, Y, P, vmax=P.max() * 1.25, levels=50, cmap="Blues")
-        plt.colorbar(label="probability density")
-        plt.scatter(instance["train_points"][:, 0], instance["train_points"][:, 1], marker='.', s=5, c='green', label='training data')
-        plt.scatter(instance["test_points"][:, 0], instance["test_points"][:, 1], marker='.', s=5, c='red', label='test data')
-        plt.title("Kernel density estimation")
-        plt.xlabel("X")
-        plt.ylabel("Y")
-        plt.gca().set_aspect('equal')
-        plt.legend()
+        plt.figure(figsize=(14, 6))
+        ax1 = plt.subplot(1, 2, 1)
+        ax1.contourf(X, Y, P, vmax=P.max() * 1.25, levels=50, cmap="Blues")
+        ax1.set_title(f"Estimate Density (log likelihood: {train_ll_xs.mean().item():.2f})")
+        ax1.grid(True)
+        ax2 = plt.subplot(1, 2, 2)
+        ax2.hist2d(instance["points"][:, 0], instance["points"][:, 1], bins=100, density=True, cmap='Oranges')
+        ax2.set_title("Ground Truth Density")
+        ax2.grid(True)
+        ax1.set_xlim(ax2.get_xlim())
+        ax1.set_ylim(ax2.get_ylim())
         plt.tight_layout()
         plt.savefig(plot_image_path)
         plt.close()
@@ -156,7 +160,7 @@ if __name__ == "__main__":
     start = time()
     np.random.seed(args.seed)
     instances = [
-        generate_instance(**parameters) 
+        generate_instance(**parameters, visualise=(i < args.visualisations)) 
         for i in range(args.instances)
     ]
     results = [

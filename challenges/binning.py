@@ -47,19 +47,23 @@ def histogram_log_likelihood(x_eval, bin_edges, x_train, upper_jitter=1e-6):
     return log_probs
 
 
-def generate_instance(num_train_points: int, num_test_points: int) -> dict:
+def generate_instance(num_train_points: int, num_test_points: int, visualise: bool = False) -> dict:
     """
     Generate problem instance
     """
-    z = np.random.normal(size=(num_train_points + num_test_points, 1))
+    if visualise:
+        z = np.random.normal(size=((num_train_points + num_test_points) * 1024, 1))
+    else:
+        z = np.random.normal(size=(num_train_points + num_test_points, 1))
     points = generate_samples(z)
 
     train_points = points[:num_train_points, 0]
-    test_points = points[num_train_points:, 0]
+    test_points = points[num_train_points:num_train_points + num_test_points, 0]
 
     return dict(
         train_points=train_points,
-        test_points=test_points
+        test_points=test_points,
+        points=points[:, 0],
     )
 
 
@@ -79,28 +83,30 @@ def evaluate_algorithm(instance: dict, algorithm: callable, plot_image_path: str
     test_ll_xs = histogram_log_likelihood(instance["test_points"], bin_edges, instance["train_points"])
     train_ll_xs = histogram_log_likelihood(instance["test_points"], bin_edges, instance["train_points"])
 
-    # if plot_image_path:
-    #     # evaluate GMM log prob
-    #     grid_pts = 128
-    #     x = np.linspace(instance["train_points"][:, 0].min() - 0.5, instance["train_points"][:, 0].max() + 0.5, grid_pts)
-    #     y = np.linspace(instance["train_points"][:, 1].min() - 0.5, instance["train_points"][:, 1].max() + 0.5, grid_pts)
-    #     X, Y = np.meshgrid(x, y)
-    #     xy = np.stack([X, Y], axis=-1).reshape(-1, 2)  # (num_pts, 2)
-    #     log_prob_xy = log_prob_multivariate_Gaussian_mixture(xy, ws_logits_batch, mus_batch, covs_batch).reshape(grid_pts, grid_pts)
-    #     P = np.exp(log_prob_xy)
-    #     plt.figure(figsize=(8, 6))
-    #     plt.contourf(X, Y, P, vmax=P.max() * 1.25, levels=50, cmap="Blues")
-    #     plt.colorbar(label="probability density")
-    #     plt.scatter(instance["train_points"][:, 0], instance["train_points"][:, 1], marker='.', s=5, c='green', label='training data')
-    #     plt.scatter(instance["test_points"][:, 0], instance["test_points"][:, 1], marker='.', s=5, c='red', label='test data')
-    #     plt.title("Kernel density estimation")
-    #     plt.xlabel("X")
-    #     plt.ylabel("Y")
-    #     plt.gca().set_aspect('equal')
-    #     plt.legend()
-    #     plt.tight_layout()
-    #     plt.savefig(plot_image_path)
-    #     plt.close()
+    if plot_image_path:
+        hist, _ = np.histogram(instance["points"], bins=bin_edges, density=True)
+        density_bar = hist[np.newaxis, :]  # shape (1, bins)
+        
+        hist_gt, bin_edges_gt = np.histogram(instance["points"], bins=100, density=True)
+        density_bar_gt = hist_gt[np.newaxis, :]  # shape (1, bins)
+        
+        plt.figure(figsize=(10, 2.5))
+        ax1 = plt.subplot(2, 1, 1)
+        ax1.imshow(density_bar, aspect='auto', cmap='Blues',
+                extent=[bin_edges[0], bin_edges[-1], 0, 1])
+        ax1.set_yticks([])
+        ax1.set_title(f"Estimated Density (log likelihood: {test_ll_xs.mean().item():.2f})")
+
+        ax2 = plt.subplot(2, 1, 2)
+        ax2.imshow(density_bar_gt, aspect='auto', cmap='Oranges',
+                extent=[bin_edges_gt[0], bin_edges_gt[-1], 0, 1])
+        ax2.set_yticks([])
+        ax2.set_title("Ground Truth Density")
+
+        # Save to file
+        plt.tight_layout()
+        plt.savefig(plot_image_path)
+        plt.close()
 
     return dict(
         train_log_likelihood=train_ll_xs.mean().item(),
@@ -137,7 +143,7 @@ if __name__ == "__main__":
     start = time()
     np.random.seed(args.seed)
     instances = [
-        generate_instance(**parameters) 
+        generate_instance(**parameters, visualise=(i < args.visualisations)) 
         for i in range(args.instances)
     ]
     results = [

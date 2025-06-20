@@ -16,6 +16,9 @@ class SimpleAutoInnovator(AutoInnovatorBase):
             prev_candidate = ctx.candidates[0][0] # 0th gen just has 1 candidate using base algorithm
         else:
             prev_candidate = ctx.candidates[candidate.generation - 1][candidate.id] # just use 1 candidate from previous generation
+        if not prev_candidate.success:
+            # Another strategy would be to use the previous generation's best candidate
+            raise RuntimeError("Previous candidate was not successful. Simple Innovator strategy cannot continue.")
         algorithm = prev_candidate.algorithm
         response = prev_candidate.response
         if response:
