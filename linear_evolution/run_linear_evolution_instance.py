@@ -177,8 +177,9 @@ def main():
                 retry_err = 'Response formatting error: ' + str(err) + f'\nReminder about response formatting: {response_format_prompt}\nRetry previous prompt:\n'
             
         else:
-            logger.error(receive_status)
-            raise ValueError(receive_status)
+            error_str = traceback.format_exc()
+            logger.error(receive_message + "\nTraceback: " + error_str)
+            raise ValueError(receive_message + "\nTraceback: " + error_str)
 
 
     loop_elapsed_time = time.time() - start_time

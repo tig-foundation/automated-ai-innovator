@@ -6,6 +6,8 @@ This script manages the execution of a batch of simple linear evolution chain au
 ```
 python3 run_linear_evolution_batch.py --env_name .env --seeds 1 2 3 4 --experiment_foldername KDE --config_name testGPT4o2D --max_prompt_iters 8 --max_parallel_runs 4 --startup_interval_sec 1.0
 ```
+One can add the `--verbose` flag to log all intermediate prompts and evaluation feedback results.
+
 
 ### `run_linear_evolution_instance.py`
 

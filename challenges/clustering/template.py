@@ -57,7 +57,10 @@ first_algorithm = textwrap.dedent("""
 
 # LLM feedback
 feedback_prompt = textwrap.dedent("""
-    Target score to maximize is a graph-based connectivity score of all clusters on a fixed set of problem instances (different datasets, here we test on 64 instances).
+    Target score to maximize is a pairwise neighbourhood-based connectivity score, which has a highest possible value of 0, of the cluster assignment on a fixed set of problem instances (different datasets, here we test on 64 instances), we provide both per instance connectivity scores and a single average over instances. In addition, you will get:
+    - Time to run evaluation for all instances (we want this to be as low as possible, but prioritize the target score)
+    - Code complexity score (length of the Python code in bytes, we prefer algorithms where this is not too high)
+    You can come up with your own internal objective function (e.g. average connectivity score penalised by code complexity or so)
 """)
 
 
@@ -72,7 +75,7 @@ def pairwise_connectivity_score(X, labels, n_neighbors=10):
     - n_neighbors: int, number of nearest neighbors to consider
 
     Returns:
-    - connectivity_score: float (lower is better)
+    - connectivity_score: float (value is <= 0, higher is better)
     """
     X = np.asarray(X)
     labels = np.asarray(labels)
@@ -90,7 +93,7 @@ def pairwise_connectivity_score(X, labels, n_neighbors=10):
         for rank, j in enumerate(indices[i]):
             if labels[i] != labels[j]:
                 # Penalize by inverse rank (rank+1 since rank starts at 0)
-                score += 1.0 / (rank + 1)
+                score -= 1.0 / (rank + 1)
     
     return score
 
