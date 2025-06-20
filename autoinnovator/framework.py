@@ -149,6 +149,8 @@ class AutoInnovatorBase(ABC):
             else:
                 # For generation 0, we use the base algorithm directly
                 algorithm_code = ctx.challenge.base_algorithm
+                with open(candidate.algorithm_path, 'w') as f:
+                    f.write(algorithm_code)
 
             start = time()
             print(f"Gen {ctx.curr_generation}, Candidate {candidate_id}: evaluate_algorithm (starting)")
