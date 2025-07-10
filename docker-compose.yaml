@@ -47,9 +47,29 @@ services:
       "
     depends_on:
       - vllm-server
+    
+  jupyter:
+    image: jupyter/scipy-notebook:latest
+    ports:
+      - "8888:8888"
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - JUPYTER_TOKEN=autoinnovator
+    volumes:
+      - ./automated-ai-innovator:/home/jovyan/work/automated-ai-innovator
+      - jupyter_data:/home/jovyan/.jupyter
+    working_dir: /home/jovyan/work/automated-ai-innovator
+    command: >
+      bash -c "
+      pip install -r requirements.txt &&
+      start-notebook.sh --NotebookApp.token='autoinnovator' --NotebookApp.password='' --NotebookApp.allow_root=True --ip='0.0.0.0'
+      "
+    depends_on:
+      - open-responses-server
 
 volumes:
   vllm_models:
+  jupyter_data:
 
 
 # curl -X POST http://localhost:8080/responses \
