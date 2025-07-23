@@ -1,49 +1,49 @@
 ---
 version: "2.0"
 services:
-  vllm-server:
-    image: vllm/vllm-openai:v0.9.2
-    env:
-      - HUGGING_FACE_HUB_TOKEN=hf_
-    command:
-      - "bash"
-      - "-c"
-    args:
-      - |
-        vllm serve mistralai/Mistral-7B-Instruct-v0.2 --host 0.0.0.0 --port 8000 --quantization bitsandbytes --load-format bitsandbytes --max-num-seqs 32 --gpu-memory-utilization 0.8 --max-model-len 8192
-    expose:
-      - port: 8000
-        as: 8000
-        to:
-          - service: open-responses-server
-          - global: true
-    params:
-      storage:
-        huggingface-cache:
-          mount: /root/.cache/huggingface
-          readOnly: false
-  open-responses-server:
-    image: ghcr.io/teabranch/open-responses-server:sha-fb5c0d6
-    env:
-      - OPENAI_BASE_URL_INTERNAL=http://vllm-server:8000
-      - OPENAI_BASE_URL=http://localhost:8080
-      - OPENAI_API_KEY=sk-mockapikey123456789
-      - API_ADAPTER_HOST=0.0.0.0
-      - API_ADAPTER_PORT=8080
-    command:
-      - "sh"
-      - "-c"
-    args:
-      - |
-        echo '{"sqlite": {"command": "uvx", "args": ["mcp-server-sqlite", "--db-path", "/tmp/test.db"]}}' > /tmp/servers_config.json &&
-        export MCP_SERVERS_CONFIG_PATH=/tmp/servers_config.json &&
-        uvicorn open_responses_server.server_entrypoint:app --host 0.0.0.0 --port 8080
-    expose:
-      - port: 8080
-        as: 8080
-        to:
-          - global: true
-          - service: jupyter
+  # vllm-server:
+  #   image: vllm/vllm-openai:v0.9.2
+  #   env:
+  #     - HUGGING_FACE_HUB_TOKEN=hf
+  #   command:
+  #     - "bash"
+  #     - "-c"
+  #   args:
+  #     - |
+  #       vllm serve mistralai/Mistral-7B-Instruct-v0.2 --host 0.0.0.0 --port 8000 --quantization bitsandbytes --load-format bitsandbytes --max-num-seqs 32 --gpu-memory-utilization 0.8 --max-model-len 8192
+  #   expose:
+  #     - port: 8000
+  #       as: 8000
+  #       to:
+  #         - service: open-responses-server
+  #         - global: true
+  #   params:
+  #     storage:
+  #       huggingface-cache:
+  #         mount: /root/.cache/huggingface
+  #         readOnly: false
+  # open-responses-server:
+  #   image: ghcr.io/teabranch/open-responses-server:sha-fb5c0d6
+  #   env:
+  #     - OPENAI_BASE_URL_INTERNAL=http://vllm-server:8000
+  #     - OPENAI_BASE_URL=http://localhost:8080
+  #     - OPENAI_API_KEY=sk-mockapikey123456789
+  #     - API_ADAPTER_HOST=0.0.0.0
+  #     - API_ADAPTER_PORT=8080
+  #   command:
+  #     - "sh"
+  #     - "-c"
+  #   args:
+  #     - |
+  #       echo '{"sqlite": {"command": "uvx", "args": ["mcp-server-sqlite", "--db-path", "/tmp/test.db"]}}' > /tmp/servers_config.json &&
+  #       export MCP_SERVERS_CONFIG_PATH=/tmp/servers_config.json &&
+  #       uvicorn open_responses_server.server_entrypoint:app --host 0.0.0.0 --port 8080
+  #   expose:
+  #     - port: 8080
+  #       as: 8080
+  #       to:
+  #         - global: true
+  #         - service: jupyter
   jupyter:
     image: jupyter/scipy-notebook:latest
     env:
@@ -55,7 +55,7 @@ services:
     args:
       - |
         cd /home/jovyan/work &&
-        git clone https://github.com/tig-foundation/automated-ai-innovator.git &&
+        git clone https://github.com/tig-foundation/automated-ai-innovator.git -b akash-chat &&
         cd automated-ai-innovator &&
         pip install -r requirements.txt &&
         cd /home/jovyan &&
@@ -72,48 +72,48 @@ services:
           readOnly: false
 profiles:
   compute:
-    vllm-gpu:
-      resources:
-        cpu:
-          units: 4
-        memory:
-          size: 16Gi
-        gpu:
-          units: 1
-          attributes:
-            vendor:
-              nvidia:
-                - model: rtx3070
-                - model: rtx3080
-                - model: rtx3090
-                - model: rtx4060ti
-                - model: rtx4070ti
-                - model: rtx4080
-                - model: rtx4090
-                - model: rtx5050
-                - model: rtx5060
-                - model: rtx5060ti
-                - model: rtx5070
-                - model: rtx5070ti
-                - model: rtx5080
-                - model: rtx5080ti
-                - model: rtx5090
-                - model: rtx5090ti
-        storage:
-          - size: 10Gi
-          - name: huggingface-cache
-            size: 50Gi
-            attributes:
-              persistent: true
-              class: beta3
-    api-server:
-      resources:
-        cpu:
-          units: 2
-        memory:
-          size: 4Gi
-        storage:
-          - size: 5Gi
+    # vllm-gpu:
+    #   resources:
+    #     cpu:
+    #       units: 4
+    #     memory:
+    #       size: 16Gi
+    #     gpu:
+    #       units: 1
+    #       attributes:
+    #         vendor:
+    #           nvidia:
+    #             - model: rtx3070
+    #             - model: rtx3080
+    #             - model: rtx3090
+    #             - model: rtx4060ti
+    #             - model: rtx4070ti
+    #             - model: rtx4080
+    #             - model: rtx4090
+    #             - model: rtx5050
+    #             - model: rtx5060
+    #             - model: rtx5060ti
+    #             - model: rtx5070
+    #             - model: rtx5070ti
+    #             - model: rtx5080
+    #             - model: rtx5080ti
+    #             - model: rtx5090
+    #             - model: rtx5090ti
+    #     storage:
+    #       - size: 10Gi
+    #       - name: huggingface-cache
+    #         size: 50Gi
+    #         attributes:
+    #           persistent: true
+    #           class: beta3
+    # api-server:
+    #   resources:
+    #     cpu:
+    #       units: 2
+    #     memory:
+    #       size: 4Gi
+    #     storage:
+    #       - size: 5Gi
     jupyter-notebook:
       resources:
         cpu:
@@ -130,24 +130,24 @@ profiles:
   placement:
     akash:
       pricing:
-        vllm-gpu:
-          denom: uakt
-          amount: 2250
-        api-server:
-          denom: uakt
-          amount: 500
+        # vllm-gpu:
+        #   denom: uakt
+        #   amount: 2250
+        # api-server:
+        #   denom: uakt
+        #   amount: 500
         jupyter-notebook:
           denom: uakt
           amount: 750
 deployment:
-  vllm-server:
-    akash:
-      profile: vllm-gpu
-      count: 1
-  open-responses-server:
-    akash:
-      profile: api-server
-      count: 1
+  # vllm-server:
+  #   akash:
+  #     profile: vllm-gpu
+  #     count: 1
+  # open-responses-server:
+  #   akash:
+  #     profile: api-server
+  #     count: 1
   jupyter:
     akash:
       profile: jupyter-notebook
