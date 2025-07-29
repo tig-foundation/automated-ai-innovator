@@ -45,7 +45,7 @@ class SimpleAutoInnovator(AutoInnovatorBase):
 
 API_KEY = "sk-mockapikey123456789"
 if not API_KEY:
-    raise ValueError("You must set an OpenAI API Key")
+    raise ValueError("You must set an API Key")
 
 from autoinnovator import Challenge, LLM, LLMProvider
 llm = LLM(

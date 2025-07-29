@@ -55,7 +55,9 @@ services:
     args:
       - |
         cd /home/jovyan/work &&
-        git clone https://github.com/tig-foundation/automated-ai-innovator.git -b akash-chat &&
+        if [ ! -d "automated-ai-innovator" ]; then
+          git clone https://github.com/tig-foundation/automated-ai-innovator.git -b akash-chat
+        fi &&
         cd automated-ai-innovator &&
         pip install -r requirements.txt &&
         cd /home/jovyan &&
