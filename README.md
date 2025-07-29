@@ -11,29 +11,27 @@ Framework for an Automated AI Innovator that operates in a loop, where each iter
 
 Each candidate is generated independently but has access to the full history of prior generations. The goal is to design your AutoInnovator in a way that uses data from previous generations to guide the creation of higher-performing algorithms over generations.
 
-## Obtaining LLM API Keys
-
-You will need to signup and create an API Key with one of the following providers:
-
-* OpenAI: https://platform.openai.com/api-keys
-* Akash Chat: https://chatapi.akash.network/
-
 ## Quick Start
 
 We have prepared a `quick_start.ipynb` Jupyter notebook which you can run locally, via Google Colab, or via Akash.
 
+**You will need to signup and create an API Key with one of the following providers:**
+
+* OpenAI: https://platform.openai.com/api-keys
+* Akash Chat: https://chatapi.akash.network/
+
 ### Local Setup
 
 1. Clone the repository
-```
-git clone https://github.com/tig-foundation/automated-ai-innovator
-cd automated-ai-innovator
-```
+   ```
+   git clone https://github.com/tig-foundation/automated-ai-innovator
+   cd automated-ai-innovator
+   ```
 
 2. Install Python dependencies
-```
-pip install -r requirements.txt
-```
+   ```
+   pip install -r requirements.txt
+   ```
 
 3. Install Jupyter Lab 
    
