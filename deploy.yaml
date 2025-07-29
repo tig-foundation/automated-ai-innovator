@@ -12,12 +12,9 @@ services:
     args:
       - |
         cd /home/jovyan/work &&
-        if [ ! -d "automated-ai-innovator" ]; then
-          git clone https://github.com/tig-foundation/automated-ai-innovator.git -b akash-chat
-        fi &&
+        git clone https://github.com/tig-foundation/automated-ai-innovator.git &&
         cd automated-ai-innovator &&
         pip install -r requirements.txt &&
-        cd /home/jovyan &&
         start-notebook.sh --NotebookApp.token='autoinnovator' --NotebookApp.password='' --NotebookApp.allow_root=True --ip='0.0.0.0'
     expose:
       - port: 8888
