@@ -20,10 +20,7 @@ class SimpleAutoInnovator(AutoInnovatorBase):
         algorithm = prev_candidate.algorithm
         response = prev_candidate.response
     
-        if ctx.llm.endpoint_type == EndpointType.COMPLETIONS:
-            text = response["choices"][0]["message"]["content"] if response else None
-        else:
-            text = response["output"][0]["content"][0]["text"] if response else None
+        text = response["choices"][0]["message"]["content"] if response else None
 
         if text:
             prev_response_id = response["id"]
@@ -46,12 +43,9 @@ class SimpleAutoInnovator(AutoInnovatorBase):
         return prompt
 
     def extract_algorithm_code(self, response: dict, ctx: Context) -> str:
-        if ctx.llm.endpoint_type == EndpointType.COMPLETIONS:
-            text = response["choices"][0]["message"]["content"]
-        else:
-            text = response["output"][0]["content"][0]["text"]
+        text = response["choices"][0]["message"]["content"] if response else None
 
-        if "<python>" in text and "</python>" in text:
+        if text and "<python>" in text and "</python>" in text:
             return text.split("<python>")[1].split("</python>")[0].strip()
         raise ValueError("Response does not contain valid algorithm code.")
 
@@ -59,12 +53,11 @@ API_KEY = None
 if not API_KEY:
     raise ValueError("You must set an API Key")
 
-from autoinnovator import Challenge, LLM, LLMProvider, EndpointType
+from autoinnovator import Challenge, LLM, LLMProvider
 llm = LLM(
     provider=LLMProvider.AKASH,
     model="DeepSeek-R1-Distill-Llama-70B",
-    api_key=API_KEY,
-    endpoint_type=EndpointType.COMPLETIONS
+    api_key=API_KEY
 )
 my_autoinnovator = SimpleAutoInnovator()
 kde_challenge = Challenge("kde")
