@@ -101,7 +101,7 @@ class AutoInnovatorBase(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def extract_algorithm_code(self, response: dict, ctx: Context) -> str:
+    def extract_algorithm_code(self, candidate: Candidate, ctx: Context) -> str:
         """
         Extract the algorithm code from the LLM response.
         This should return a string containing the Python code for the algorithm.
@@ -141,7 +141,7 @@ class AutoInnovatorBase(ABC):
 
                 start = time()
                 print(f"Gen {ctx.curr_generation}, Candidate {candidate_id}: extract_algorithm_code (starting)")
-                algorithm_code = self.extract_algorithm_code(response, ctx)
+                algorithm_code = self.extract_algorithm_code(candidate, ctx)
                 with open(candidate.algorithm_path, 'w') as f:
                     f.write(algorithm_code)
                 print(f"Gen {ctx.curr_generation}, Candidate {candidate_id}: extract_algorithm_code (done, took {time() - start:.2f} seconds)")
