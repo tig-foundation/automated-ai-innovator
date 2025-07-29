@@ -34,7 +34,7 @@ class SimpleAutoInnovator(AutoInnovatorBase):
         evaluation = prev_candidate.evaluation
         evaluation["algorithm_code_length"] = len(algorithm)
         
-        return {
+        prompt = {
             "messages": [
                 {"role": "system", "content": self.system_prompt(ctx)},
                 {"role": "user", "content": f"ALGORITHM:\n{algorithm}\nREASONING:\n{reasoning}\nEVALUATION:\n{evaluation}"}
@@ -42,6 +42,8 @@ class SimpleAutoInnovator(AutoInnovatorBase):
             "temperature": 1.0,
             "previous_response_id": prev_response_id,
         }
+
+        return prompt
 
     def extract_algorithm_code(self, response: dict, ctx: Context) -> str:
         if ctx.llm.endpoint_type == EndpointType.COMPLETIONS:

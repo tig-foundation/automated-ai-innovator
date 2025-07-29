@@ -36,7 +36,7 @@ class SimpleAutoInnovator(AutoInnovatorBase):
             "previous_response_id": prev_response_id,
         }
 
-    def extract_algorithm_code(self, response: dict) -> str:
+    def extract_algorithm_code(self, response: dict, ctx: Context) -> str:
         text = response["output"][0]["content"][0]["text"]
         if "<python>" in text and "</python>" in text:
             return text.split("<python>")[1].split("</python>")[0].strip()
