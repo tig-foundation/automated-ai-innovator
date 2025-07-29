@@ -1,7 +1,6 @@
 import requests
 import json        
 from enum import Enum
-from typing import Tuple, Optional
 
 
 class LLMProvider(Enum):
@@ -9,36 +8,36 @@ class LLMProvider(Enum):
     Enum for supported LLM providers
     """
     OPENAI = "openai"
-
+    AKASH = "akash"
 
 class LLM:
     """
-    Base class for LLM interaction
+    Base class for LLM interaction with streaming support
     """
-    def __init__(self, provider: LLMProvider, api_key: str, model: str):
+    def __init__(self, provider: LLMProvider, api_key: str, model: str, base_url: str = None):
         if provider == LLMProvider.OPENAI:
-            self.api_url = "https://api.openai.com/v1/responses"
+            self.api_url = base_url or "https://api.openai.com/v1/chat/completions"
+        elif provider == LLMProvider.AKASH:
+            self.api_url = base_url or "https://chatapi.akash.network/api/v1/chat/completions"
         else:
-            raise ValueError(f"Unsupported provider: {provider}. Supported providers are: OpenAI, Groq, NanoGPT.")
+            raise ValueError(f"Unsupported provider: {provider}. Supported providers are: OpenAI, Akash.")
+        
         self.model = model
         self.api_key = api_key
 
-    def send_prompt(self, input: str, **kwargs) -> dict:
+    def send_prompt(self, **kwargs) -> dict:
         """
-        Send a prompt to the LLM with optional parameters
+        Send a prompt to the LLM via the completions endpoint
+        Refer to https://platform.openai.com/docs/api-reference/responses/create
+
         Args:
-            input (str): The prompt to send to the LLM.
-            temperature (float): Sampling temperature for the LLM. Defaults to 0.7.
-            **kwargs: Additional parameters for the LLM API. Check OpenAI documentation:
-                https://platform.openai.com/docs/api-reference/responses/create
+            **kwargs: Parameters for the completions endpoint.
 
         Returns:
-            The response content.
+            dict: Complete response
         """
-        
         payload = {
             "model": self.model,
-            "input": input,
             **kwargs
         }
         
@@ -55,12 +54,10 @@ class LLM:
             )
             
             d = response.json()
-            
             if response.status_code == 200:
                 return d
             else:
                 error_message = d.get("error", {}).get("message", "Unknown error")
                 raise RuntimeError(f"LLM API error: {error_message}")
-                
         except Exception as e:
             raise RuntimeError(f"Failed to send prompt: {str(e)}") from e

@@ -1,0 +1,54 @@
+---
+version: "2.0"
+services:
+  jupyter:
+    image: jupyter/scipy-notebook:latest
+    env:
+      - JUPYTER_ENABLE_LAB=yes
+      - JUPYTER_TOKEN=autoinnovator
+    command:
+      - "bash"
+      - "-c"
+    args:
+      - |
+        cd /home/jovyan/work &&
+        git clone https://github.com/tig-foundation/automated-ai-innovator.git &&
+        cd automated-ai-innovator &&
+        pip install -r requirements.txt &&
+        start-notebook.sh --NotebookApp.token='autoinnovator' --NotebookApp.password='' --NotebookApp.allow_root=True --ip='0.0.0.0'
+    expose:
+      - port: 8888
+        as: 8888
+        to:
+          - global: true
+    params:
+      storage:
+        jupyter-data:
+          mount: /home/jovyan/.jupyter
+          readOnly: false
+profiles:
+  compute:
+    jupyter-notebook:
+      resources:
+        cpu:
+          units: 2
+        memory:
+          size: 8Gi
+        storage:
+          - size: 5Gi
+          - name: jupyter-data
+            size: 10Gi
+            attributes:
+              persistent: true
+              class: beta3
+  placement:
+    akash:
+      pricing:
+        jupyter-notebook:
+          denom: uakt
+          amount: 750
+deployment:
+  jupyter:
+    akash:
+      profile: jupyter-notebook
+      count: 1
