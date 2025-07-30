@@ -19,40 +19,45 @@ class SimpleAutoInnovator(AutoInnovatorBase):
             raise RuntimeError("Previous candidate was not successful. Simple Innovator strategy cannot continue.")
         algorithm = prev_candidate.algorithm
         response = prev_candidate.response
-        if response:
+    
+        text = response["choices"][0]["message"]["content"] if response else None
+
+        if text:
             prev_response_id = response["id"]
-            text = response["output"][0]["content"][0]["text"]
             reasoning = text.split('<reasoning>')[1].split('</reasoning>')[0]
         else:
             prev_response_id = None
             reasoning = "No reasoning yet. Evaluation was on base algorithm."
         evaluation = prev_candidate.evaluation
         evaluation["algorithm_code_length"] = len(algorithm)
-
-        return {
-            "instructions": self.system_prompt(ctx),
-            "input": f"ALGORITHM:\n{algorithm}\nREASONING:\n{reasoning}\nEVALUATION:\n{evaluation}",
+        
+        prompt = {
+            "messages": [
+                {"role": "system", "content": self.system_prompt(ctx)},
+                {"role": "user", "content": f"ALGORITHM:\n{algorithm}\nREASONING:\n{reasoning}\nEVALUATION:\n{evaluation}"}
+            ],
             "temperature": 1.0,
             "previous_response_id": prev_response_id,
         }
 
+        return prompt
+
     def extract_algorithm_code(self, response: dict, ctx: Context) -> str:
-        text = response["output"][0]["content"][0]["text"]
-        if "<python>" in text and "</python>" in text:
+        text = response["choices"][0]["message"]["content"] if response else None
+
+        if text and "<python>" in text and "</python>" in text:
             return text.split("<python>")[1].split("</python>")[0].strip()
-        print(text)
         raise ValueError("Response does not contain valid algorithm code.")
 
-API_KEY = "sk-mockapikey123456789"
+API_KEY = None
 if not API_KEY:
     raise ValueError("You must set an API Key")
 
 from autoinnovator import Challenge, LLM, LLMProvider
 llm = LLM(
-    provider=LLMProvider.OPENAI,
-    model="mistralai/Mistral-7B-Instruct-v0.2",
-    api_key=API_KEY,
-    base_url="http://localhost:8080/responses"
+    provider=LLMProvider.AKASH,
+    model="DeepSeek-R1-Distill-Llama-70B",
+    api_key=API_KEY
 )
 my_autoinnovator = SimpleAutoInnovator()
 kde_challenge = Challenge("kde")
