@@ -11,6 +11,32 @@ Framework for an Automated AI Innovator that operates in a loop, where each iter
 
 Each candidate is generated independently but has access to the full history of prior generations. The goal is to design your AutoInnovator in a way that uses data from previous generations to guide the creation of higher-performing algorithms over generations.
 
+## Whitepaper: Technical Overview
+
+For a detailed technical overview of the design, motivation, and broader vision, please refer to our whitepaper:
+
+[Automated Algorithmic Innovator MVP - The Innovation Game Labs, August 2025](./whitepaper.pdf)
+
+Our whitepaper outlines:
+
+* The motivation behind automated algorithmic innovation
+* Design principles of the MVP pipeline
+* Details of the mini-challenges used for evaluation
+* Future directions for multi-agent and reinforcement learning-based extensions
+
+### Recompiling
+
+To recompile the LaTeX source of the paper:
+```
+cd whitepaper
+pdflatex main.tex 
+biber main
+pdflatex main.tex
+pdflatex main.tex
+```
+
+This will generate an updated `main.pdf` in the `whitepaper/` directory.
+
 ## Quick Start
 
 We have prepared a `quick_start.ipynb` Jupyter notebook which you can run locally, via Google Colab, or via Akash.

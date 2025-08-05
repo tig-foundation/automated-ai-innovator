@@ -38,4 +38,10 @@ pip-delete-this-directory.txt
 # environment files
 venv/
 venv*
-.env
+
+# pdflatex
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
