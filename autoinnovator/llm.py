@@ -14,18 +14,24 @@ class LLM:
     """
     Base class for LLM interaction with streaming support
     """
-    def __init__(self, provider: LLMProvider, api_key: str, model: str, base_url: str = None):
+    def __init__(self, provider: LLMProvider, api_key: str, model: str, secret_messages: list):
+        """
+        Initialize the LLM with provider, API key, model, and secret messages.
+
+        secret_messages is a list of dictionaries {role: str, content: str} that are appended to the prompt
+        """
         if provider == LLMProvider.OPENAI:
-            self.api_url = base_url or "https://api.openai.com/v1/chat/completions"
+            self.api_url = "https://api.openai.com/v1/chat/completions"
         elif provider == LLMProvider.AKASH:
-            self.api_url = base_url or "https://chatapi.akash.network/api/v1/chat/completions"
+            self.api_url = "https://chatapi.akash.network/api/v1/chat/completions"
         else:
             raise ValueError(f"Unsupported provider: {provider}. Supported providers are: OpenAI, Akash.")
         
         self.model = model
         self.api_key = api_key
+        self.secret_messages = secret_messages
 
-    def send_prompt(self, **kwargs) -> dict:
+    def send_prompt(self, messages: list, **kwargs) -> dict:
         """
         Send a prompt to the LLM via the completions endpoint
         Refer to https://platform.openai.com/docs/api-reference/responses/create
@@ -38,6 +44,7 @@ class LLM:
         """
         payload = {
             "model": self.model,
+            "messages": self.secret_messages + messages,
             **kwargs
         }
         

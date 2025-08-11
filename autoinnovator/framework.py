@@ -24,7 +24,7 @@ def read_if_exists(path: str) -> Optional[Union[dict, str]]:
 
 @dataclass
 class Candidate:
-    id: int
+    agent: str
     generation: int
     output_dir: str
     success: bool
@@ -77,12 +77,15 @@ class Candidate:
 @dataclass
 class Context:
     experiment_dir: str
-    llm: LLM
+    agents: Dict[str, LLM]
     challenge: Challenge
-    candidates_per_generation: int
     num_generations: int
     curr_generation: int
-    candidates: List[List[Candidate]]
+    candidates: List[Dict[str, Candidate]]
+
+    @property
+    def num_agents(self) -> int:
+        return len(self.agents)
 
     @property
     def results_plot_path(self) -> str:
@@ -91,7 +94,7 @@ class Context:
 
 class AutoInnovatorBase(ABC):    
     @abstractmethod
-    def create_prompt_kwargs(self, candidate: Candidate, ctx: Context) -> dict:
+    def create_prompt_kwargs(self, agent: str, ctx: Context) -> Optional[dict]:
         """
         Create the prompt arguments for LLM.send_prompt.
         This must include the prompt. Optionally can include system_prompt, temperature and any additional parameters.
@@ -101,7 +104,7 @@ class AutoInnovatorBase(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def extract_algorithm_code(self, candidate: Candidate, ctx: Context) -> str:
+    def extract_algorithm_code(self, agent: str, ctx: Context) -> Optional[str]:
         """
         Extract the algorithm code from the LLM response.
         This should return a string containing the Python code for the algorithm.
@@ -112,40 +115,49 @@ class AutoInnovatorBase(ABC):
 
     def run_candidate(
         self, 
-        candidate_id: int,
+        agent: str,
         ctx: Context,
         num_visualisations: int = 4
-    ) -> Candidate:
+    ):
+        generation_dir = os.path.join(ctx.experiment_dir, f'generation_{ctx.curr_generation:03}')
         candidate = Candidate(
-            id=candidate_id,
+            agent=agent,
             generation=ctx.curr_generation,
-            output_dir=os.path.join(ctx.experiment_dir, f'generation_{ctx.curr_generation:03}', f'candidate_{candidate_id:03}'),
+            output_dir=generation_dir if agent is None else os.path.join(generation_dir, agent),
             success=False
         )
+        ctx.candidates[-1][agent] = candidate
         os.makedirs(candidate.output_dir, exist_ok=True)
         try:
             if ctx.curr_generation > 0:
                 start = time()
-                print(f"Gen {ctx.curr_generation}, Candidate {candidate_id}: create_prompt_kwargs (starting)")
-                prompt_kwargs = self.create_prompt_kwargs(candidate, ctx)
-                with open(candidate.prompt_path, 'w') as f:
-                    json.dump(prompt_kwargs, f)
-                print(f"Gen {ctx.curr_generation}, Candidate {candidate_id}: create_prompt_kwargs (done, took {time() - start:.2f} seconds)")
+                print(f"Gen {ctx.curr_generation}, Agent {agent}: create_prompt_kwargs (starting)")
+                prompt_kwargs = self.create_prompt_kwargs(agent, ctx)
+                if prompt_kwargs is not None:
+                    with open(candidate.prompt_path, 'w') as f:
+                        json.dump(prompt_kwargs, f)
+                print(f"Gen {ctx.curr_generation}, Agent {agent}: create_prompt_kwargs (done, took {time() - start:.2f} seconds)")
+                if prompt_kwargs is None:
+                    print(f"Gen {ctx.curr_generation}, Agent {agent}: No prompt created. Skipping this generation")
+                    return
 
                 start = time()
-                print(f"Gen {ctx.curr_generation}, Candidate {candidate_id}: llm.send_prompt (starting)")
-                response = ctx.llm.send_prompt(**prompt_kwargs)
+                print(f"Gen {ctx.curr_generation}, Agent {agent}: llm.send_prompt (starting)")
+                response = ctx.agents[agent].send_prompt(**prompt_kwargs)
                 with open(candidate.response_path, 'w') as f:
                     json.dump(response, f)
-                print(f"Gen {ctx.curr_generation}, Candidate {candidate_id}: llm.send_prompt (done, took {time() - start:.2f} seconds)")
+                print(f"Gen {ctx.curr_generation}, Agent {agent}: llm.send_prompt (done, took {time() - start:.2f} seconds)")
 
                 start = time()
-                print(f"Gen {ctx.curr_generation}, Candidate {candidate_id}: extract_algorithm_code (starting)")
-                algorithm_code = self.extract_algorithm_code(candidate, ctx)
-                with open(candidate.algorithm_path, 'w') as f:
-                    f.write(algorithm_code)
-                print(f"Gen {ctx.curr_generation}, Candidate {candidate_id}: extract_algorithm_code (done, took {time() - start:.2f} seconds)")
-            
+                print(f"Gen {ctx.curr_generation}, Agent {agent}: extract_algorithm_code (starting)")
+                algorithm_code = self.extract_algorithm_code(agent, ctx)
+                if algorithm_code is not None:
+                    with open(candidate.algorithm_path, 'w') as f:
+                        f.write(algorithm_code)
+                print(f"Gen {ctx.curr_generation}, Agent {agent}: extract_algorithm_code (done, took {time() - start:.2f} seconds)")
+                if algorithm_code is None:
+                    print(f"Gen {ctx.curr_generation}, Agent {agent}: No algorithm code extracted. Skipping this generation")
+                    return
             else:
                 # For generation 0, we use the base algorithm directly
                 algorithm_code = ctx.challenge.base_algorithm
@@ -153,31 +165,31 @@ class AutoInnovatorBase(ABC):
                     f.write(algorithm_code)
 
             start = time()
-            print(f"Gen {ctx.curr_generation}, Candidate {candidate_id}: evaluate_algorithm (starting)")
+            print(f"Gen {ctx.curr_generation}, Agent {agent}: evaluate_algorithm (starting)")
             ctx.challenge.evaluate_algorithm(
                 candidate.algorithm_path, 
                 candidate.evaluation_path,
                 candidate.visualisation_path,
                 num_visualisations
             )
-            print(f"Gen {ctx.curr_generation}, Candidate {candidate_id}: evaluate_algorithm (done, took {time() - start:.2f} seconds)")
+            print(f"Gen {ctx.curr_generation}, Agent {agent}: evaluate_algorithm (done, took {time() - start:.2f} seconds)")
             candidate.success = True
         except Exception as e:
-            print(f"Gen {ctx.curr_generation}, Candidate {candidate_id}: error {str(e)}")
+            print(f"Gen {ctx.curr_generation}, Agent {agent}: error {str(e)}")
             with open(candidate.error_path, 'w') as f:
                 f.write(f"{traceback.format_exc()}\n{str(e)}")
 
-        return candidate
+        return
 
     def plot_results(self, ctx: Context):
         y = {
             k: [] 
-            for k, v in ctx.candidates[0][0].evaluation.items()
+            for k, v in ctx.candidates[0][None].evaluation.items()
             if isinstance(v, (int, float))
         }
         x = []
         for gen in range(ctx.curr_generation + 1):
-            for candidate in ctx.candidates[gen]:
+            for candidate in ctx.candidates[gen].values():
                 if not candidate.success:
                     continue
                 x.append(gen)
@@ -211,24 +223,22 @@ class AutoInnovatorBase(ABC):
 
     def run(
         self,
-        llm: LLM,
+        agents: Dict[str, LLM],
         challenge: Challenge,
         num_generations: int,
-        candidates_per_generation: int,
         experiment_dir: str,
         num_visualisations_per_candidate: int = 4,
         on_generation_done: Optional[callable] = None,
     ) -> Context:
         os.makedirs(experiment_dir, exist_ok=True)
-        print(f"Starting AutoInnovator run with {num_generations} generations and {candidates_per_generation} candidates per generation.")
+        print(f"Starting AutoInnovator run with {len(agents)} agents and {num_generations} generations.")
         print(f"Experiment directory: {experiment_dir}")
 
         # Run subsequent generations
         ctx = Context(
             experiment_dir=experiment_dir,
-            llm=llm,
+            agents=agents,
             challenge=challenge,
-            candidates_per_generation=candidates_per_generation,
             num_generations=num_generations,
             curr_generation=0,
             candidates=[]
@@ -236,17 +246,16 @@ class AutoInnovatorBase(ABC):
         for gen in range(num_generations + 1):
             print(f"Running generation {gen}")
             ctx.curr_generation = gen
+            ctx.candidates.append({})
             if gen > 0:
-                with ThreadPoolExecutor(max_workers=candidates_per_generation) as executor:
+                with ThreadPoolExecutor(max_workers=len(agents)) as executor:
                     futures = [
-                        executor.submit(self.run_candidate, candidate_id, ctx, num_visualisations_per_candidate) 
-                        for candidate_id in range(candidates_per_generation)
+                        executor.submit(self.run_candidate, a, ctx, num_visualisations_per_candidate) 
+                        for a in agents
                     ]
-                    generation_results = [f.result() for f in futures]
-                    ctx.candidates.append(generation_results)
+                    [f.result() for f in futures]
             else:
-                candidate = self.run_candidate(0, ctx, num_visualisations_per_candidate)
-                ctx.candidates.append([candidate])
+                self.run_candidate(None, ctx, num_visualisations_per_candidate)
 
             print(f"Generation {gen} completed. Plotting results...")
             self.plot_results(ctx)
